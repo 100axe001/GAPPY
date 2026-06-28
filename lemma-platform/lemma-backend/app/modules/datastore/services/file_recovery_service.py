@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+
+from app.core.infrastructure.db.uow import SqlAlchemyUnitOfWork
+from app.modules.datastore.domain.file_entities import FileStatus
+from app.modules.datastore.domain.ports import (
+    DatastoreFileRepositoryPort,
+    DatastoreReindexQueuePort,
+)
+
+
+@dataclass(frozen=True)
+class DatastoreFileRecoverySummary:
+    examined_count: int
+    reset_count: int
+    enqueued_count: int
+    pending_cutoff: datetime
+    processing_cutoff: datetime
+
+
+class DatastoreFileRecoveryService:
+    def __init__(
+        self,
+        *,
+        file_repository: DatastoreFileRepositoryPort,
+        reindex_queue: DatastoreReindexQueuePort,
+        uow: SqlAlchemyUnitOfWork,
+    ) -> None:
+        self.file_repository = file_repository
+        self.reindex_queue = reindex_queue
+        self.uow = uow
+
+    async def recover_stale_files(
+        self,
+        *,
+        now: datetime | None = None,
+    ) -> DatastoreFileRecoverySummary:
+        current_time = now or datetime.now(timezone.utc)
+        pending_cutoff = current_time - timedelta(minutes=15)
+        processing_cutoff = current_time - timedelta(minutes=35)
+        failed_cutoff = current_time - timedelta(minutes=30)
+
+        stale_files = await self.file_repository.list_stale_recovery_candidates(
+            pending_cutoff=pending_cutoff,
+            processing_cutoff=processing_cutoff,
+            failed_cutoff=failed_cutoff,
+        )
+        # Stuck PROCESSING and retry-eligible FAILED files must be reset to
+        # PENDING before re-enqueue so the processing task's claim guard accepts
+        # them.
+        reset_ids = [
+            file_entity.id
+            for file_entity in stale_files
+            if file_entity.status in (FileStatus.PROCESSING, FileStatus.FAILED)
+        ]
+        reset_count = 0
+        if reset_ids:
+            reset_count = await self.file_repository.bulk_update_status(
+                file_ids=reset_ids,
+                status=FileStatus.PENDING,
+            )
+            await self.uow.commit()
+
+        enqueued_count = 0
+        for file_entity in stale_files:
+            # Indexing-eligibility is NOT re-checked here: ``reindex_queue.enqueue``
+            # gates on PENDING + search_enabled, which is the same rule the
+            # indexing policy enforces at write time. Non-indexable files are
+            # persisted as NOT_REQUIRED and so are never recovery candidates nor
+            # re-enqueued. The rule lives in the queue/policy, not duplicated here.
+            queued = await self.reindex_queue.enqueue(
+                file_id=file_entity.id,
+                pod_id=file_entity.pod_id,
+                metadata=file_entity.metadata or {},
+                defer_until=None,
+            )
+            if queued:
+                enqueued_count += 1
+
+        return DatastoreFileRecoverySummary(
+            examined_count=len(stale_files),
+            reset_count=reset_count,
+            enqueued_count=enqueued_count,
+            pending_cutoff=pending_cutoff,
+            processing_cutoff=processing_cutoff,
+        )

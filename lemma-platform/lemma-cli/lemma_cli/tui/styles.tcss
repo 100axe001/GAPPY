@@ -1,0 +1,127 @@
+/* Pod screen */
+#status-bar {
+    height: 1;
+    padding: 0 1;
+    background: $surface;
+}
+
+#body {
+    height: 1fr;
+}
+
+#nav {
+    width: 22;
+    border-right: solid $primary;
+}
+
+#nav .heading {
+    padding: 0 1;
+    text-style: bold;
+    color: $text-muted;
+}
+
+#resources {
+    width: 1fr;
+}
+
+/* Pickers */
+PickerScreen {
+    align: center middle;
+}
+
+#picker-box {
+    width: 64;
+    max-height: 24;
+    border: round $primary;
+    background: $surface;
+    padding: 1;
+}
+
+#picker-title {
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+#picker-options {
+    height: 1fr;
+}
+
+/* Chat */
+#chat-log {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#chat-input {
+    dock: bottom;
+}
+
+#usage-bar {
+    dock: bottom;
+    height: 1;
+    padding: 0 1;
+}
+
+.user-message {
+    margin: 1 0 0 8;
+    padding: 0 1;
+    border: round $accent;
+}
+
+.agent-message {
+    margin: 1 8 0 0;
+    padding: 0 1;
+    border: round $primary;
+}
+
+.tool-call {
+    margin: 1 8 0 2;
+}
+
+.tool-section-label {
+    color: $text-muted;
+    text-style: bold;
+}
+
+.tool-input, .tool-output {
+    padding: 0 1;
+    background: $surface;
+}
+
+.thinking {
+    margin: 1 8 0 2;
+    color: $text-muted;
+}
+
+.thinking-body {
+    padding: 0 1;
+}
+
+.status-line {
+    margin: 0 0 0 2;
+}
+
+.approval-prompt {
+    margin: 1 8 0 2;
+    padding: 0 1;
+    border: round $warning;
+    height: auto;
+}
+
+.approval-description {
+    color: $text-muted;
+}
+
+.approval-actions {
+    height: auto;
+    margin: 1 0 0 0;
+}
+
+.approval-actions Button {
+    margin: 0 2 0 0;
+    min-width: 11;
+}
+
+.approval-status {
+    color: $text-muted;
+}

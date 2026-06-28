@@ -1,0 +1,512 @@
+.agent-builder-root {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, var(--surface-1) 0%, var(--pod-main-bg) 36%, color-mix(in srgb, var(--surface-1) 72%, var(--pod-main-bg)) 100%),
+    var(--pod-main-bg);
+}
+
+.agent-builder-root::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 23rem;
+  background:
+    linear-gradient(112deg, transparent 0%, color-mix(in srgb, var(--surface-1) 72%, transparent) 38%, transparent 76%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 42%, transparent), transparent 72%);
+  content: "";
+  pointer-events: none;
+}
+
+.agent-builder-canvas {
+  position: relative;
+}
+
+.agent-builder-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.25rem 0 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 34%, transparent);
+}
+
+.agent-builder-title {
+  color: var(--text-primary);
+  font-family: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+@media (min-width: 640px) {
+  .agent-builder-title {
+    font-size: 3rem;
+  }
+}
+
+.agent-builder-step-strip {
+  display: grid;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.75rem 0 0.5rem;
+}
+
+.agent-builder-progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 0.09375rem;
+  width: 100%;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--border-subtle) 16%, transparent);
+}
+
+.agent-builder-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--action-primary) 36%, var(--text-secondary)), color-mix(in srgb, var(--action-primary) 68%, var(--surface-1)) 58%, var(--action-primary));
+  opacity: 0.56;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agent-builder-step-strip[data-progress="2"] .agent-builder-progress-fill {
+  transform: scaleX(0.25);
+}
+
+.agent-builder-step-strip[data-progress="3"] .agent-builder-progress-fill {
+  transform: scaleX(0.5);
+}
+
+.agent-builder-step-strip[data-progress="4"] .agent-builder-progress-fill {
+  transform: scaleX(0.75);
+}
+
+.agent-builder-step-strip[data-progress="5"] .agent-builder-progress-fill {
+  transform: scaleX(1);
+}
+
+.flow-new-step-strip .agent-builder-progress-fill {
+  width: 0%;
+}
+
+.flow-new-step-strip[data-progress="2"] .agent-builder-progress-fill {
+  width: 100%;
+}
+
+.schedule-create-step-strip[data-progress="2"] .agent-builder-progress-fill {
+  width: 33.3333%;
+}
+
+.schedule-create-step-strip[data-progress="3"] .agent-builder-progress-fill {
+  width: 66.6667%;
+}
+
+.schedule-create-step-strip[data-progress="4"] .agent-builder-progress-fill {
+  width: 100%;
+}
+
+.surface-create-step-strip .agent-builder-progress-fill {
+  width: 0%;
+}
+
+.surface-create-step-strip[data-progress="2"] .agent-builder-progress-fill {
+  width: 25%;
+}
+
+.surface-create-step-strip[data-progress="3"] .agent-builder-progress-fill {
+  width: 50%;
+}
+
+.surface-create-step-strip[data-progress="4"] .agent-builder-progress-fill {
+  width: 75%;
+}
+
+.surface-create-step-strip[data-progress="5"] .agent-builder-progress-fill {
+  width: 100%;
+}
+
+.agent-builder-progress-fill::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-1) 62%, transparent), transparent);
+  content: "";
+  opacity: 0.34;
+  transform: translateX(-100%);
+  animation: agent-builder-progress-sheen 2.4s var(--ease-out) infinite;
+}
+
+@keyframes agent-builder-progress-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.agent-builder-step-button {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.agent-builder-step-button:hover,
+.agent-builder-step-button:focus-visible {
+  background: color-mix(in srgb, var(--surface-2) 24%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-builder-step-button-active {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.agent-builder-step-index {
+  color: var(--text-tertiary);
+}
+
+.agent-builder-step-index-active {
+  background: color-mix(in srgb, var(--action-primary) 8%, transparent);
+  color: var(--action-primary);
+}
+
+.agent-builder-step-index-done {
+  background: color-mix(in srgb, var(--action-primary) 6%, transparent);
+  color: color-mix(in srgb, var(--action-primary) 82%, var(--text-secondary));
+}
+
+.agent-builder-stage {
+  position: relative;
+  padding: 1.75rem 0 2.5rem;
+}
+
+.agent-builder-stage[data-step="shape"]::before,
+.agent-builder-stage[data-step="access"]::before {
+  position: absolute;
+  inset: 0 -1.5rem auto;
+  z-index: -1;
+  height: 18rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--intelligence-soft) 22%, transparent), transparent 54%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-1) 36%, transparent), transparent 78%);
+  content: "";
+  pointer-events: none;
+}
+
+.agent-builder-side-section {
+  color: var(--text-secondary);
+}
+
+.agent-builder-section {
+  min-width: 0;
+}
+
+.agent-builder-section + .agent-builder-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 44%, transparent);
+}
+
+.agent-builder-choice-button {
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface-1) 46%, transparent);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.agent-builder-choice-button:hover,
+.agent-builder-choice-button:focus-visible,
+.agent-builder-choice-button-active {
+  border-color: color-mix(in srgb, var(--field-border-hover) 42%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+
+.agent-builder-choice-button-active {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--intelligence-soft) 34%, transparent), color-mix(in srgb, var(--surface-1) 52%, transparent)),
+    color-mix(in srgb, var(--surface-2) 46%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-builder-note {
+  border-left: 2px solid color-mix(in srgb, var(--action-primary) 28%, var(--border-subtle));
+  padding-left: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.resource-soft-block {
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-2) 30%, transparent);
+}
+
+.resource-soft-inline {
+  background: color-mix(in srgb, var(--surface-2) 34%, transparent);
+}
+
+.resource-soft-icon {
+  background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+  color: var(--text-secondary);
+}
+
+.resource-option-hover:hover,
+.resource-option-hover:focus-visible {
+  background: color-mix(in srgb, var(--surface-2) 34%, transparent);
+}
+
+.resource-option-selected {
+  border-color: color-mix(in srgb, var(--action-primary) 16%, transparent);
+  background: color-mix(in srgb, var(--action-primary) 5%, transparent);
+}
+
+.resource-footer-glass {
+  background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+}
+
+.resource-divider-top {
+  border-top-color: color-mix(in srgb, var(--border-subtle) 30%, transparent);
+}
+
+.resource-divider-bottom {
+  border-bottom-color: color-mix(in srgb, var(--border-subtle) 36%, transparent);
+}
+
+.resource-done-dot {
+  background: color-mix(in srgb, var(--action-primary) 7%, transparent);
+  color: var(--action-primary);
+}
+
+.lemma-index-row-selected {
+  background: color-mix(in srgb, var(--action-primary) 6%, transparent);
+}
+
+.agent-builder-permission-strip {
+  display: flex;
+  max-width: 64rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.875rem;
+}
+
+.agent-builder-permission-option {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.25rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.agent-builder-permission-option:hover,
+.agent-builder-permission-option:focus-within {
+  border-color: color-mix(in srgb, var(--action-primary) 9%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 28%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-builder-permission-option[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--action-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--action-primary) 5%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-builder-access-grid {
+  display: grid;
+  gap: 2rem 3rem;
+}
+
+.agent-builder-access-card {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .agent-builder-access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .agent-builder-access-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.resource-index-card-action {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+.resource-index-card:hover .resource-index-card-action,
+.resource-index-card:focus-within .resource-index-card-action {
+  opacity: 1;
+}
+
+.resource-index-card-action:hover,
+.resource-index-card-action:focus-visible {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.resource-step-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.resource-step-segment {
+  height: 0.375rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--action-primary) 16%, var(--surface-3));
+}
+
+.lemma-index-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.125rem 0 0.25rem;
+}
+
+.lemma-index-row {
+  position: relative;
+  min-height: 2.75rem;
+  border-radius: var(--radius-lg);
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.lemma-index-row::after {
+  content: "";
+  position: absolute;
+  left: 1.75rem;
+  right: 0.5rem;
+  bottom: -1px;
+  height: 1px;
+  background: color-mix(in srgb, var(--border-subtle) 64%, transparent);
+  opacity: 0.46;
+  transform: scaleX(0.68);
+  transform-origin: left center;
+}
+
+.lemma-index-row:last-child::after,
+.lemma-index-row:hover::after {
+  opacity: 0;
+}
+
+.lemma-index-row:hover {
+  background: color-mix(in srgb, var(--surface-2) 52%, transparent);
+}
+
+.lemma-index-row.lemma-run-row-live {
+  background: color-mix(in srgb, var(--state-warning) 16%, var(--card-bg));
+}
+
+.lemma-index-row.lemma-run-row-live:hover {
+  background: color-mix(in srgb, var(--state-warning) 22%, var(--card-bg));
+}
+
+.lemma-run-list {
+  gap: 0.5rem;
+}
+
+.lemma-run-list > .lemma-index-row::after {
+  display: none;
+}
+
+.lemma-run-list > .lemma-index-row.lemma-run-row-live {
+  border: 1px solid color-mix(in srgb, var(--state-warning) 24%, transparent);
+}
+
+.lemma-workbench-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.data-table-workbench {
+  gap: 0;
+  background: transparent;
+}
+
+.data-table-workbench .data-table-toolbar {
+  margin: 0.75rem 0.875rem 0;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 56%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  padding: 0.5rem 0.625rem;
+}
+
+.data-table-workbench .data-table-viewport {
+  padding: 0.75rem 0.875rem 0;
+}
+
+.data-table-workbench .data-table-grid-frame {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 56%, transparent);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--card-bg);
+}
+
+.data-table-workbench .data-table-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table-workbench .data-table-head {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-subtle) 52%, transparent);
+}
+
+.data-table-workbench .data-table-grid tbody tr {
+  min-height: 2.375rem;
+}
+
+.data-table-workbench .data-table-grid tbody tr:hover {
+  background: color-mix(in srgb, var(--surface-2) 38%, transparent);
+}
+
+.data-table-workbench .data-table-grid td > div,
+.data-table-workbench .data-table-grid .editable-cell-field {
+  min-height: 2rem;
+}
+
+.data-table-workbench .data-table-footer {
+  margin: 0 0.875rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 56%, transparent);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  padding: 0.5rem 0.625rem;
+}
+
+.lemma-route-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Keep assistant sidebar list bounded and scrollable inside the modal shell. */

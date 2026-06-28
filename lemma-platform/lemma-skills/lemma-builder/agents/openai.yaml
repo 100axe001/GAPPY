@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lemma Builder"
+  short_description: "Design and import complete Lemma pods"
+  default_prompt: "Design, author, progressively import, and verify a complete Lemma pod with tables, indexed/searchable files, converted markdown document access, functions, agents, workflows, schedules, apps, connectors, tools, and current CLI commands."

@@ -1,0 +1,12 @@
+{
+  // Typecheck-only config that INCLUDES the test files (the build tsconfig
+  // excludes them so they never land in dist). Wired into CI as a separate
+  // `tsc --noEmit -p tsconfig.test.json` step so the test suites keep their
+  // type coverage. See .github/workflows/sdk-checks.yml.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

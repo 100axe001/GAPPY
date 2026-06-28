@@ -1,0 +1,70 @@
+"""Schedule processor service."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, Optional
+
+from app.modules.schedule.domain.interfaces import ScheduleEventPublisher
+from app.modules.schedule.domain.schedule import ScheduleEntity
+from app.modules.schedule.infrastructure.adapters.schedule_event_publisher import (
+    RedisScheduleEventPublisher,
+)
+from app.modules.schedule.services.schedule_filter_service import ScheduleFilterService
+from app.modules.usage.domain.errors import UsageLimitExceededError
+from app.core.log.log import get_logger
+
+logger = get_logger(__name__)
+
+
+class ScheduleProcessor:
+    """Service to process schedules and emit events."""
+
+    def __init__(
+        self,
+        filter_service: ScheduleFilterService | None = None,
+        event_publisher: ScheduleEventPublisher | None = None,
+    ):
+        self.filter_service = filter_service or ScheduleFilterService()
+        self.event_publisher = event_publisher or RedisScheduleEventPublisher()
+
+    async def process_event(
+        self,
+        *,
+        schedule: ScheduleEntity | None = None,
+        payload: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Process schedule event and publish when accepted."""
+        if schedule is None:
+            raise ValueError("schedule is required")
+        if not schedule.is_active:
+            logger.info("Schedule %s is inactive, skipping.", schedule.id)
+            return False
+
+        llm_output: Optional[Dict[str, Any]] = None
+
+        if schedule.filter_instruction:
+            try:
+                should_proceed, llm_output = await self.filter_service.filter_event(
+                    instruction=schedule.filter_instruction,
+                    output_schema=schedule.filter_output_schema,
+                    event_payload=payload,
+                    schedule=schedule,
+                )
+
+                if not should_proceed:
+                    logger.info("Schedule %s filtered out by LLM.", schedule.id)
+                    return False
+            except UsageLimitExceededError:
+                raise
+            except Exception as e:
+                logger.error("Error in LLM filter for schedule %s: %s", schedule.id, e)
+                return False
+
+        await self.event_publisher.publish_schedule_fired(
+            schedule=schedule,
+            payload=payload,
+            metadata=metadata,
+            llm_output=llm_output,
+        )
+        return True

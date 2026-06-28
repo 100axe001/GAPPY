@@ -1,0 +1,57 @@
+from datetime import date
+
+from pydantic import EmailStr
+
+from app.core.domain.aggregate import AggregateRoot
+from app.core.domain.entity import Entity
+
+
+class AuthUserEntity(Entity):
+    """Authentication user entity from auth middleware."""
+
+    pass
+
+
+class UserEntity(AggregateRoot):
+    """Identity user aggregate root."""
+
+    email: EmailStr
+    is_verified: bool = False
+    is_active: bool = True
+    is_superuser: bool = False
+    is_deleted: bool = False
+
+    first_name: str | None = None
+    last_name: str | None = None
+    mobile_number: str | None = None
+    telegram_username: str | None = None
+    country: str | None = None
+    timezone: str | None = None
+    date_of_birth: date | None = None
+
+    def mark_signed_up(self) -> None:
+        """Emit signed-up event for welcome email processing."""
+        from app.modules.identity.domain.events import UserSignedUpEvent
+
+        self.add_event(
+            UserSignedUpEvent(
+                user_id=self.id,
+                email=str(self.email),
+                first_name=self.first_name,
+            )
+        )
+
+    def update_profile(self, **data: object) -> None:
+        """Apply profile updates to the user aggregate."""
+        allowed = {
+            "first_name",
+            "last_name",
+            "mobile_number",
+            "telegram_username",
+            "country",
+            "timezone",
+            "date_of_birth",
+        }
+        for field, value in data.items():
+            if field in allowed:
+                setattr(self, field, value)

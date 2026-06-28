@@ -1,0 +1,29 @@
+{
+  "type": "event_callback",
+  "team_id": "T0123456",
+  "api_app_id": "A0123456",
+  "event": {
+    "type": "message",
+    "user": "U0123456",
+    "text": "Hello from Slack DM",
+    "channel": "D0123456",
+    "channel_type": "im",
+    "ts": "1700000000.000100",
+    "event_ts": "1700000000.000100",
+    "team": "T0123456",
+    "assistant_thread": {
+      "action_token": "action-token"
+    }
+  },
+  "event_id": "Evbd32c95896",
+  "event_time": 1700000000,
+  "authorizations": [
+    {
+      "enterprise_id": null,
+      "team_id": "T0123456",
+      "user_id": "U0AGSSTQZLH",
+      "is_bot": true,
+      "is_enterprise_install": false
+    }
+  ]
+}

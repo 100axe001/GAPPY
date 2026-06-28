@@ -1,0 +1,39 @@
+services:
+  hyperdx:
+    image: docker.io/clickhouse/clickstack-all-in-one:latest
+    # This image runs in REQUIRED_AUTH mode: its OpAMP supervisor only wires the
+    # OTLP receiver (binding 4317/4318) and provisions an ingestion API key once
+    # a team is registered. `make observability-up` registers a default local
+    # team via the HyperDX API, reads its key, and passes it to the backend as
+    # the OTLP bearer token (authorization=<key>). The Mongo volume persists that
+    # team + key across restarts, so registration is effectively one-time.
+    ports:
+      - "${HYPERDX_OTLP_HTTP_PORT:-14318}:4318"
+      - "${HYPERDX_OTLP_GRPC_PORT:-14317}:4317"
+      - "${HYPERDX_UI_PORT:-8080}:8080"
+    volumes:
+      # Persist the team/ingestion-key (Mongo) and telemetry (ClickHouse) across
+      # restarts so the token stays stable and traces aren't lost.
+      - hyperdx-mongo:/data/db
+      - hyperdx-clickhouse:/var/lib/clickhouse
+    restart: unless-stopped
+
+  # Arize Phoenix — LLM/agent (OpenInference) observability. The backend's
+  # separate LLM OTEL exporter ships pydantic-ai/OpenInference spans here so
+  # agent runs (prompts, tool calls, model I/O) are inspectable in the Phoenix
+  # UI, while generic app traces/metrics/logs continue to flow to HyperDX.
+  phoenix:
+    image: docker.io/arizephoenix/phoenix:latest
+    ports:
+      - "${PHOENIX_UI_PORT:-16006}:6006"        # web UI + OTLP HTTP collector
+      - "${PHOENIX_OTLP_GRPC_PORT:-16317}:4317" # OTLP gRPC collector
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    volumes:
+      - phoenix-data:/mnt/data
+    restart: unless-stopped
+
+volumes:
+  phoenix-data:
+  hyperdx-mongo:
+  hyperdx-clickhouse:

@@ -1,0 +1,57 @@
+"""Identity module domain events."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from app.core.domain.events import DomainEvent
+
+
+IDENTITY_EVENTS_STREAM = "identity_events"
+
+
+class UserSignedUpEvent(DomainEvent):
+    event_type: str = "identity.user.signed_up"
+    user_id: UUID
+    email: str
+    first_name: str | None = None
+
+    @classmethod
+    def stream_name(cls) -> str:
+        return IDENTITY_EVENTS_STREAM
+
+
+class OrganizationInvitationCreatedEvent(DomainEvent):
+    event_type: str = "identity.organization.invitation.created"
+    invitation_id: UUID
+    organization_id: UUID
+    organization_name: str
+    invited_email: str
+    role: str
+    invited_by_user_id: UUID
+    invited_by_email: str
+    accept_url: str
+    pod_name: str | None = None
+    pod_description: str | None = None
+
+    @classmethod
+    def stream_name(cls) -> str:
+        return IDENTITY_EVENTS_STREAM
+
+
+class OrganizationInvitationAcceptedEvent(DomainEvent):
+    event_type: str = "identity.organization.invitation.accepted"
+    invitation_id: UUID
+    organization_id: UUID
+    organization_name: str
+    accepted_user_id: UUID
+    accepted_email: str
+    role: str
+
+    @classmethod
+    def stream_name(cls) -> str:
+        return IDENTITY_EVENTS_STREAM
+
+
+class IdentityEvents:
+    STREAM = IDENTITY_EVENTS_STREAM

@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.core.api.dependencies import CurrentUser
+from app.modules.connectors.api.dependencies import (
+    ConnectorOperationServiceDep,
+    ConnectorServiceDep,
+)
+from app.modules.connectors.api.schemas import (
+    ConnectorDetailResponseSchema,
+    ConnectorListResponseSchema,
+    ConnectorResponseSchema,
+    ConnectorSkillResponse,
+)
+
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
+
+
+def _resolve_skill_file(connector_id: str, provider: str | None) -> Path | None:
+    """Resolve skill file: provider-specific → generic → None."""
+    if provider:
+        specific = SKILLS_DIR / f"{connector_id}.{provider.lower()}.md"
+        if specific.exists():
+            return specific
+    generic = SKILLS_DIR / f"{connector_id}.md"
+    if generic.exists():
+        return generic
+    return None
+
+router = APIRouter(prefix="/connectors", tags=["Connectors"])
+
+
+@router.get(
+    "",
+    response_model=ConnectorListResponseSchema,
+    operation_id="connector.list",
+    summary="List Connectors",
+    description="Get all active connectors available for connector",
+)
+async def list_connectors(
+    user: CurrentUser,
+    connector_service: ConnectorServiceDep,
+    limit: int = Query(default=100),
+    page_token: str | None = Query(default=None),
+) -> ConnectorListResponseSchema:
+    connectors, next_cursor = await connector_service.list_connectors(
+        limit=limit, cursor=page_token
+    )
+    return ConnectorListResponseSchema(
+        items=[ConnectorResponseSchema.model_validate(app) for app in connectors],
+        limit=limit,
+        next_page_token=next_cursor,
+    )
+
+
+@router.get(
+    "/{connector_id}/skill",
+    response_model=ConnectorSkillResponse,
+    operation_id="connector.skill.get",
+    summary="Get Connector Skill",
+    description=(
+        "Get the skill guide markdown for a connector. "
+        "Pass `provider=lemma` or `provider=composio` to get provider-specific instructions "
+        "when the app supports both. Falls back to the generic doc if no provider-specific file exists. "
+        "Returns 404 if no skill doc has been generated yet."
+    ),
+)
+async def get_connector_skill(
+    user: CurrentUser,
+    connector_id: str,
+    connector_service: ConnectorServiceDep,
+    provider: str | None = Query(default=None, description="Provider override: lemma or composio"),
+) -> ConnectorSkillResponse:
+    skill_file = _resolve_skill_file(connector_id, provider)
+    if skill_file is None:
+        raise HTTPException(status_code=404, detail=f"No skill doc found for '{connector_id}'")
+    markdown = skill_file.read_text(encoding="utf-8")
+    try:
+        connector = await connector_service.get_connector(connector_id)
+        title = connector.title
+    except Exception:
+        title = None
+    effective_provider = provider or ("lemma" if f"{connector_id}.lemma.md" == skill_file.name else None)
+    return ConnectorSkillResponse(
+        connector_id=connector_id,
+        title=title,
+        markdown=markdown,
+        provider=effective_provider,
+    )
+
+
+@router.get(
+    "/{connector_id}",
+    response_model=ConnectorDetailResponseSchema,
+    operation_id="connector.get",
+    summary="Get Connector",
+    description="Get a specific connector by ID along with its operation catalog",
+)
+async def get_connector(
+    user: CurrentUser,
+    connector_id: str,
+    connector_service: ConnectorServiceDep,
+    operation_service: ConnectorOperationServiceDep,
+) -> ConnectorDetailResponseSchema:
+    connector = await connector_service.get_connector(connector_id)
+    operations = await operation_service.list_operations(connector_id)
+    return ConnectorDetailResponseSchema(
+        **ConnectorResponseSchema.model_validate(connector).model_dump(),
+        operations={operation.name: operation for operation in operations},
+    )

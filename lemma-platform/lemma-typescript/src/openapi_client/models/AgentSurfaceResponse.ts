@@ -1,0 +1,24 @@
+/* generated using openapi-typescript-codegen -- do not edit */
+/* istanbul ignore file */
+/* tslint:disable */
+/* eslint-disable */
+import type { AgentSurfaceStatus } from './AgentSurfaceStatus.js';
+import type { SurfaceConfigResponse } from './SurfaceConfigResponse.js';
+import type { SurfaceCredentialMode } from './SurfaceCredentialMode.js';
+import type { SurfacePlatform } from './SurfacePlatform.js';
+export type AgentSurfaceResponse = {
+    account_id?: (string | null);
+    agent_id?: (string | null);
+    agent_name?: (string | null);
+    config: SurfaceConfigResponse;
+    credential_mode?: SurfaceCredentialMode;
+    id: string;
+    platform: SurfacePlatform;
+    pod_id: string;
+    status?: AgentSurfaceStatus;
+    surface_identity_id?: (string | null);
+    surface_identity_username?: (string | null);
+    uses_default_agent?: boolean;
+    webhook_url?: (string | null);
+};
+

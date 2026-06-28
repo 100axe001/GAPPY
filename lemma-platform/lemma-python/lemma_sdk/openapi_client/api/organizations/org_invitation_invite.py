@@ -1,0 +1,191 @@
+from http import HTTPStatus
+from typing import Any
+from urllib.parse import quote
+from uuid import UUID
+
+import httpx
+
+from ... import errors
+from ...client import AuthenticatedClient, Client
+from ...models.error_response import ErrorResponse
+from ...models.organization_invitation_request import OrganizationInvitationRequest
+from ...models.organization_invitation_response import OrganizationInvitationResponse
+from ...types import Response
+
+
+def _get_kwargs(
+    org_id: UUID,
+    *,
+    body: OrganizationInvitationRequest,
+) -> dict[str, Any]:
+    headers: dict[str, Any] = {}
+
+    _kwargs: dict[str, Any] = {
+        "method": "post",
+        "url": "/organizations/{org_id}/invitations".format(
+            org_id=quote(str(org_id), safe=""),
+        ),
+    }
+
+    _kwargs["json"] = body.to_dict()
+
+    headers["Content-Type"] = "application/json"
+
+    _kwargs["headers"] = headers
+    return _kwargs
+
+
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> ErrorResponse | OrganizationInvitationResponse | None:
+    if response.status_code == 201:
+        response_201 = OrganizationInvitationResponse.from_dict(response.json())
+
+        return response_201
+
+    if response.status_code == 422:
+        response_422 = ErrorResponse.from_dict(response.json())
+
+        return response_422
+
+    if client.raise_on_unexpected_status:
+        raise errors.UnexpectedStatus(response.status_code, response.content)
+    else:
+        return None
+
+
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[ErrorResponse | OrganizationInvitationResponse]:
+    return Response(
+        status_code=HTTPStatus(response.status_code),
+        content=response.content,
+        headers=response.headers,
+        parsed=_parse_response(client=client, response=response),
+    )
+
+
+def sync_detailed(
+    org_id: UUID,
+    *,
+    client: AuthenticatedClient | Client,
+    body: OrganizationInvitationRequest,
+) -> Response[ErrorResponse | OrganizationInvitationResponse]:
+    """Invite Member
+
+     Invite a user to join the organization
+
+    Args:
+        org_id (UUID):
+        body (OrganizationInvitationRequest): Organization invitation request schema.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[ErrorResponse | OrganizationInvitationResponse]
+    """
+
+    kwargs = _get_kwargs(
+        org_id=org_id,
+        body=body,
+    )
+
+    response = client.get_httpx_client().request(
+        **kwargs,
+    )
+
+    return _build_response(client=client, response=response)
+
+
+def sync(
+    org_id: UUID,
+    *,
+    client: AuthenticatedClient | Client,
+    body: OrganizationInvitationRequest,
+) -> ErrorResponse | OrganizationInvitationResponse | None:
+    """Invite Member
+
+     Invite a user to join the organization
+
+    Args:
+        org_id (UUID):
+        body (OrganizationInvitationRequest): Organization invitation request schema.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        ErrorResponse | OrganizationInvitationResponse
+    """
+
+    return sync_detailed(
+        org_id=org_id,
+        client=client,
+        body=body,
+    ).parsed
+
+
+async def asyncio_detailed(
+    org_id: UUID,
+    *,
+    client: AuthenticatedClient | Client,
+    body: OrganizationInvitationRequest,
+) -> Response[ErrorResponse | OrganizationInvitationResponse]:
+    """Invite Member
+
+     Invite a user to join the organization
+
+    Args:
+        org_id (UUID):
+        body (OrganizationInvitationRequest): Organization invitation request schema.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[ErrorResponse | OrganizationInvitationResponse]
+    """
+
+    kwargs = _get_kwargs(
+        org_id=org_id,
+        body=body,
+    )
+
+    response = await client.get_async_httpx_client().request(**kwargs)
+
+    return _build_response(client=client, response=response)
+
+
+async def asyncio(
+    org_id: UUID,
+    *,
+    client: AuthenticatedClient | Client,
+    body: OrganizationInvitationRequest,
+) -> ErrorResponse | OrganizationInvitationResponse | None:
+    """Invite Member
+
+     Invite a user to join the organization
+
+    Args:
+        org_id (UUID):
+        body (OrganizationInvitationRequest): Organization invitation request schema.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        ErrorResponse | OrganizationInvitationResponse
+    """
+
+    return (
+        await asyncio_detailed(
+            org_id=org_id,
+            client=client,
+            body=body,
+        )
+    ).parsed

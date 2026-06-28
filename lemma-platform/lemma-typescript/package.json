@@ -1,0 +1,93 @@
+{
+  "name": "lemma-sdk",
+  "version": "0.5.3",
+  "description": "Official TypeScript SDK for Lemma APIs, optimized around pod-scoped workflows",
+  "license": "Apache-2.0",
+  "author": "Lemma",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "lemma-sdk": "./bin/lemma-sdk.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemma-work/lemma-platform.git",
+    "directory": "lemma-typescript"
+  },
+  "homepage": "https://github.com/lemma-work/lemma-platform/tree/main/lemma-typescript#readme",
+  "bugs": {
+    "url": "https://github.com/lemma-work/lemma-platform/issues"
+  },
+  "keywords": [
+    "lemma",
+    "sdk",
+    "typescript",
+    "javascript",
+    "node",
+    "browser",
+    "api",
+    "react"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./browser-bundle": "./dist/browser/lemma-client.js",
+    "./elements": {
+      "types": "./dist/ui/index.d.ts",
+      "default": "./dist/ui/index.js"
+    },
+    "./ui-bundle": "./dist/browser/lemma-ui.js"
+  },
+  "unpkg": "dist/browser/lemma-client.js",
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "generate:client": "./scripts/generate_openapi_client.sh",
+    "generate:l2": "node scripts/generate_l2.mjs",
+    "build": "npm run clean && tsc -p tsconfig.json && npm run build:bundle && npm run build:ui",
+    "build:bundle": "node ./scripts/build_browser_bundle.mjs",
+    "build:ui": "node ./scripts/build_ui_bundle.mjs",
+    "test": "npm run build:bundle && vitest run",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })\"",
+    "registry:build": "shadcn build ./registry.json -o ./public/r",
+    "registry:check": "npm run registry:build && node ./scripts/check_registry_blocks.mjs",
+    "prepublishOnly": "npm run build",
+    "release:check": "npm run build && npm_config_cache=.npm-cache npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5",
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "supertokens-web-js": "^0.16.0"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.101.0",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.14",
+    "esbuild": "^0.28.1",
+    "jsdom": "^24.1.1",
+    "marked": "^14.1.4",
+    "openapi-typescript-codegen": "^0.29.0",
+    "shadcn": "^4.2.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.5"
+  }
+}

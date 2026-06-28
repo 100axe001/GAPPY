@@ -1,0 +1,87 @@
+"""Unit tests for the advisory app-HTML linter (unified browser-SDK contract)."""
+
+from app.modules.apps.services.app_html_validation import lint_app_html
+
+UNIFIED_OK = """
+<div id="root">loading</div>
+<script>
+  (function () {
+    var cfg = window.__LEMMA_CONFIG__ || {};
+    var base = (cfg.apiUrl || window.location.origin).replace(/\\/$/, "");
+    var s = document.createElement("script");
+    s.src = base + "/public/sdk/lemma-client.js";
+    s.onload = boot;
+    document.head.appendChild(s);
+  })();
+  function boot() {
+    const client = new window.LemmaClient.LemmaClient();
+    client.records.list("tickets", { limit: 50 });
+  }
+</script>
+"""
+
+
+def test_unified_contract_is_clean():
+    assert lint_app_html(UNIFIED_OK) == []
+
+
+def test_flags_runtime_babel():
+    html = '<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>'
+    issues = lint_app_html(html)
+    assert any("Babel" in i for i in issues)
+
+
+def test_flags_retired_pod_client_sdk():
+    html = (
+        '<script type="module">import { LemmaPodClient } from "@lemma/pod-client";'
+        "</script>"
+    )
+    issues = lint_app_html(html)
+    assert any("@lemma/pod-client" in i for i in issues)
+
+
+def test_flags_retired_pod_client_script_tag():
+    html = '<script src="/public/sdk/pod-client.js"></script>'
+    issues = lint_app_html(html)
+    assert any("pod-client.js" in i for i in issues)
+
+
+def test_flags_namespace_object_used_as_constructor():
+    html = "<script>const c = new window.LemmaClient({ podId: 'x' });</script>"
+    issues = lint_app_html(html)
+    assert any("namespace object" in i for i in issues)
+
+
+def test_does_not_flag_correct_double_constructor():
+    html = "<script>const c = new window.LemmaClient.LemmaClient();</script>"
+    assert lint_app_html(html) == []
+
+
+def test_flags_hardcoded_absolute_sdk_host():
+    # An app's own subdomain does not serve /public/sdk — build from cfg.apiUrl.
+    html = (
+        '<script src="https://crm-app.apps.lemma.work/public/sdk/lemma-client.js">'
+        "</script>"
+    )
+    issues = lint_app_html(html)
+    assert any("absolute host" in i for i in issues)
+
+
+def test_flags_relative_sdk_path():
+    # A relative src 404s on app subdomains (only the API origin serves the SDK).
+    html = '<script src="/public/sdk/lemma-client.js"></script>'
+    issues = lint_app_html(html)
+    assert any("relative" in i for i in issues)
+
+
+def test_does_not_flag_config_derived_sdk_loader():
+    assert lint_app_html(UNIFIED_OK) == []
+
+
+def test_flags_hardcoded_pod_id():
+    html = (
+        "<script>const c = new window.LemmaClient.LemmaClient("
+        "{ podId: '019ebadc-d86a-7424-9221-e3424f05b1a6' });</script>"
+    )
+    issues = lint_app_html(html)
+    assert any("Hardcoded pod id" in i for i in issues)

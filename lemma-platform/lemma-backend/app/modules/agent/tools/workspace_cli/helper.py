@@ -1,0 +1,115 @@
+from typing import Any, List, Dict
+import csv
+import io
+
+from app.modules.agent.tools.workspace_entities import (
+    PythonExecutionResult,
+    ShellCommandResult,
+)
+
+CHARACTER_LIMIT_STDOUT = 30000
+CHARACTER_LIMIT_STDERR = 10000
+CHARACTER_LIMIT_OUTPUT = 10000
+CHARACTER_LIMIT_DATASTORE_RESULT = 50000  # Approximately 10k tokens (1 token ≈ 4 chars)
+
+
+def replace_result_if_present(
+    result: PythonExecutionResult, new_result: str
+) -> PythonExecutionResult:
+    """Replace the result value in stdout/stderr if it is present"""
+    replace_string = "[Result REDACTED as it is given in `result` field]"
+    stdout = result.stdout
+    stderr = result.stderr
+    if result.result and stdout and result.result in stdout:
+        stdout = stdout.replace(result.result, replace_string)
+    if result.result and stderr and result.result in stderr:
+        stderr = stderr.replace(result.result, replace_string)
+    return PythonExecutionResult(
+        success=result.success,
+        stdout=stdout,
+        stderr=stderr,
+        result=result.result,
+        error_in_exec=result.error_in_exec,
+        execution_count=result.execution_count,
+        data=result.data,
+    )
+
+
+def trim_python_result(result: PythonExecutionResult) -> PythonExecutionResult:
+    """Trim the Python execution result to remove unnecessary details and limit size"""
+    # Create a new result with only the necessary fields
+    result = replace_result_if_present(result, result.result)
+    return PythonExecutionResult(
+        success=result.success,
+        stdout=result.stdout[:CHARACTER_LIMIT_STDOUT] if result.stdout else None,
+        stderr=result.stderr[:CHARACTER_LIMIT_STDERR] if result.stderr else None,
+        result=result.result[:CHARACTER_LIMIT_OUTPUT] if result.result else None,
+        error_in_exec=result.error_in_exec,  # Keep error_in_exec as is
+        execution_count=result.execution_count,
+        data=result.data,  # Keep data as is (rich outputs)
+    )
+
+
+def trim_shell_command_result(result: ShellCommandResult) -> ShellCommandResult:
+    """Trim the shell command result to remove unnecessary details and limit size"""
+    return ShellCommandResult(
+        success=result.success,
+        exit_code=result.exit_code,
+        stderr=result.stderr[:CHARACTER_LIMIT_STDERR]
+        if result.stderr
+        else None,  # Limit stderr to first 2000 characters
+        stdout=result.stdout[:CHARACTER_LIMIT_STDOUT]
+        if result.stdout
+        else None,  # Limit stdout to first 5000 characters
+        error=result.error[:CHARACTER_LIMIT_OUTPUT]
+        if result.error
+        else None,  # Limit error to first 2000 characters
+        current_working_directory=result.current_working_directory,  # Keep current working directory as is
+    )
+
+
+def convert_to_csv_string(data: List[Dict[str, Any]]) -> str:
+    """
+    Convert a list of dictionaries to a CSV string representation.
+    This is more token-efficient than JSON for tabular data.
+
+    Args:
+        data: List of dictionaries with consistent keys
+
+    Returns:
+        CSV string representation of the data
+    """
+    if not data:
+        return ""
+
+    # Get all unique keys from all dictionaries
+    all_keys = set()
+    for row in data:
+        all_keys.update(row.keys())
+
+    # Sort keys for consistent output
+    fieldnames = sorted(all_keys)
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+
+    # Write header
+    writer.writeheader()
+
+    # Write rows, converting None and datetime to strings
+    for row in data:
+        # Convert all values to strings, handling None and datetime
+        clean_row = {}
+        for key in fieldnames:
+            value = row.get(key)
+            if value is None:
+                clean_row[key] = ""
+            else:
+                clean_row[key] = str(value)
+        writer.writerow(clean_row)
+
+    csv_string = output.getvalue()
+    output.close()
+
+    return csv_string

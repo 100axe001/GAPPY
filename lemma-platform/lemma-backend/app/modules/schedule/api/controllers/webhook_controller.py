@@ -1,0 +1,159 @@
+"""Webhook API controller for handling external webhooks."""
+
+from __future__ import annotations
+from typing import Dict, Any
+
+from fastapi import APIRouter, Request, HTTPException, status, Response
+from app.core.log.log import get_logger
+
+from app.modules.schedule.api.dependencies import (
+    WebhookHandlerDep,
+    ComposioWebhookVerifierDep,
+)
+from app.core.infrastructure.events.message_bus import (
+    FastStreamRedisMessageBus,
+    get_message_bus,
+)
+from fastapi import Depends
+from app.core.domain.events import RawWebhookReceivedEvent
+from app.modules.agent_surfaces.infrastructure.debug.raw_webhook_file_logger import (
+    log_raw_webhook_event,
+)
+
+logger = get_logger(__name__)
+
+router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
+
+
+def _normalize_composio_payload(verification_result: Dict[str, Any]) -> Dict[str, Any]:
+    verified_payload = verification_result.get("payload", {})
+    raw_payload = verification_result.get("raw_payload", {})
+    if not isinstance(verified_payload, dict):
+        return {}
+
+    metadata = verified_payload.get("metadata", {})
+    connected_account = metadata.get("connected_account", {})
+    event_payload = verified_payload.get("payload")
+    if not isinstance(event_payload, dict):
+        event_payload = raw_payload.get("data", {})
+
+    return {
+        "id": raw_payload.get("id", verified_payload.get("id")),
+        "timestamp": raw_payload.get("timestamp"),
+        "type": verified_payload.get("trigger_slug"),
+        "webhook_type": raw_payload.get("type"),
+        "metadata": {
+            "log_id": raw_payload.get("metadata", {}).get("log_id"),
+            "trigger_slug": verified_payload.get("trigger_slug"),
+            "trigger_id": verified_payload.get("id"),
+            "connected_account_id": connected_account.get("id"),
+            "auth_config_id": connected_account.get("auth_config_id"),
+            "user_id": verified_payload.get("user_id"),
+            "toolkit_slug": verified_payload.get("toolkit_slug"),
+            "version": verification_result.get("version"),
+        },
+        "data": event_payload,
+    }
+
+
+@router.post(
+    "/{source}",
+    operation_id="webhook.handle",
+    summary="Handle Webhook",
+    description="Receive webhooks from various sources (slack, composio, jira, email, etc.)",
+    status_code=status.HTTP_200_OK,
+)
+async def handle_webhook(
+    source: str,
+    request: Request,
+    webhook_handler: WebhookHandlerDep,
+    composio_webhook_verifier: ComposioWebhookVerifierDep,
+    message_bus: FastStreamRedisMessageBus = Depends(get_message_bus),
+) -> Dict[str, Any]:
+    """Handle webhook from a source.
+
+    Supports:
+    - slack: Slack Events API webhooks
+    - composio: Composio webhooks (requires signature verification)
+    - jira: Jira webhooks
+    - email: Email webhooks
+    - Other sources: Generic webhook handling
+    """
+    headers = dict(request.headers)
+
+    # Handle Composio webhook signature verification
+    if source == "composio":
+        payload_text = (await request.body()).decode("utf-8", errors="replace")
+
+        # Verify webhook signature
+        try:
+            verification_result = composio_webhook_verifier.verify(
+                payload_text, headers
+            )
+            normalized_payload = _normalize_composio_payload(verification_result)
+            payload = (
+                normalized_payload
+                if isinstance(normalized_payload, dict)
+                else {"data": verification_result.get("raw_payload")}
+            )
+        except Exception as e:
+            logger.error(f"Failed to verify Composio webhook: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid webhook signature",
+            )
+    else:
+        # For other sources, parse JSON
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}  # Maybe just raw body handling if needed? But handler expects dict payload.
+
+    await log_raw_webhook_event(source=source, payload=payload, headers=headers)
+
+    # Handle Slack URL verification challenge
+    if source == "slack" and payload.get("type") == "url_verification":
+        return {"challenge": payload.get("challenge")}
+
+    # Publish raw webhook event for other modules (e.g. assistant surfaces) to listen to
+    event = RawWebhookReceivedEvent(
+        source=source,
+        payload=payload,
+        headers=headers,
+    )
+    await message_bus.publish(stream=event.stream_name(), event=event)
+
+    # Handle webhook
+    schedule_ids = await webhook_handler.handle_webhook(
+        source=source, payload=payload, headers=headers
+    )
+    logger.info(f"Matched schedules: {schedule_ids} for {source} webhook")
+    return {
+        "message": "Webhook received",
+    }
+
+
+@router.get(
+    "/{source}/verify",
+    operation_id="webhook.verify",
+    summary="Verify Webhook",
+    description="Webhook verification endpoint for platforms that require it",
+)
+async def verify_webhook(
+    source: str,
+    request: Request,
+) -> Response:
+    """Verify webhook (for platforms like WhatsApp, etc.)."""
+    params = request.query_params
+
+    if source == "whatsapp":
+        mode = params.get("hub.mode")
+        challenge = params.get("hub.challenge")
+
+        if mode == "subscribe" and challenge:
+            logger.info("Verified WhatsApp webhook")
+            return Response(content=challenge, media_type="text/plain")
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="Verification failed"
+    )

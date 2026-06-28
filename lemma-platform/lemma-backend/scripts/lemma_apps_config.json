@@ -1,0 +1,788 @@
+[
+  {
+    "name": "slack",
+    "title": "Slack",
+    "description": "Slack connector for messaging, channels, and notifications",
+    "auth_method": "OAUTH2",
+    "auth_provider": "LEMMA",
+    "operation_executor": "LEMMA",
+    "icon": null,
+    "config": {
+      "access_token_path": "access_token",
+      "refresh_token_path": "refresh_token"
+    },
+    "system_oauth": {
+      "client_id_env": "SLACK_CLIENT_ID",
+      "client_secret_env": "SLACK_CLIENT_SECRET"
+    },
+    "oauth2_config": {
+      "token_url": "https://slack.com/api/oauth.v2.access",
+      "revoke_url": "https://slack.com/api/auth.revoke",
+      "userinfo_url": "https://slack.com/api/users.identity",
+      "authorization_url": "https://slack.com/oauth/v2/authorize",
+      "extra_params": {
+        "user_scope": "bookmarks:read,bookmarks:write,calls:read,calls:write,canvases:read,canvases:write,channels:history,channels:read,channels:write,chat:write,dnd:read,dnd:write,emoji:read,files:read,files:write,groups:history,groups:read,groups:write,im:history,im:read,im:write,links.embed:write,links:read,links:write,mpim:history,mpim:read,mpim:write,mpim:write.topic,pins:read,pins:write,reactions:read,reactions:write,reminders:read,reminders:write,remote_files:read,remote_files:share,search:read,team:read,usergroups:read,usergroups:write,users.profile:read,users.profile:write,users:read,users:read.email,users:write"
+      },
+      "default_scopes": [
+        "app_mentions:read,bookmarks:read,bookmarks:write,calls:read,calls:write,channels:history,channels:read,chat:write,chat:write.customize,files:read,files:write,im:history,im:write,links:read,links:write,reactions:read,reactions:write,users.profile:read,users:read,users:read.email,channels:manage,im:read,im:write.topic,groups:history,chat:write.public,groups:write,mpim:write,mpim:write.topic,groups:read,mpim:history,mpim:read,groups:write.topic,assistant:write"
+      ]
+    },
+    "agent_instruction": "Use Slack to send messages, manage channels, read conversations, and interact with users in workspaces. Access files, reactions, and user profiles.",
+    "is_active": true,
+    "triggers": [
+      {
+        "name": "slack_channel_message",
+        "event_type": "message",
+        "description": "Triggered when a new message is posted in a channel",
+        "config_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": ["team_id", "channel_id"],
+          "properties": {
+            "team_id": {
+              "type": "string"
+            },
+            "channel_id": {
+              "type": "string"
+            }
+          }
+        },
+        "payload_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": [
+            "token",
+            "team_id",
+            "context_team_id",
+            "context_enterprise_id",
+            "api_app_id",
+            "event",
+            "type",
+            "event_id",
+            "event_time",
+            "authorizations",
+            "is_ext_shared_channel"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "event": {
+              "type": "object",
+              "required": [
+                "ts",
+                "team",
+                "text",
+                "type",
+                "user",
+                "blocks",
+                "channel",
+                "event_ts",
+                "channel_type",
+                "client_msg_id"
+              ],
+              "properties": {
+                "ts": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                },
+                "blocks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["type", "block_id", "elements"],
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "block_id": {
+                        "type": "string"
+                      },
+                      "elements": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["type"],
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "elements": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["type", "text"],
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "channel": {
+                  "type": "string"
+                },
+                "event_ts": {
+                  "type": "string"
+                },
+                "channel_type": {
+                  "type": "string"
+                },
+                "client_msg_id": {
+                  "type": "string"
+                },
+                "assistant_thread": {
+                  "type": "object",
+                  "required": ["action_token"],
+                  "properties": {
+                    "action_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "token": {
+              "type": "string"
+            },
+            "team_id": {
+              "type": "string"
+            },
+            "event_id": {
+              "type": "string"
+            },
+            "api_app_id": {
+              "type": "string"
+            },
+            "event_time": {
+              "type": "integer"
+            },
+            "event_context": {
+              "type": "string"
+            },
+            "authorizations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "is_bot",
+                  "team_id",
+                  "user_id",
+                  "enterprise_id",
+                  "is_enterprise_install"
+                ],
+                "properties": {
+                  "is_bot": {
+                    "type": "boolean"
+                  },
+                  "team_id": {
+                    "type": "string"
+                  },
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "enterprise_id": {
+                    "type": "string"
+                  },
+                  "is_enterprise_install": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "context_team_id": {
+              "type": "string"
+            },
+            "context_enterprise_id": {
+              "type": "string"
+            },
+            "is_ext_shared_channel": {
+              "type": "boolean"
+            }
+          }
+        },
+        "payload_example": {}
+      },
+      {
+        "name": "slack_thread_reply",
+        "event_type": "message",
+        "description": "Triggered when a reply is posted in a thread",
+        "config_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": ["team_id", "thread_ts", "channel_id"],
+          "properties": {
+            "team_id": {
+              "type": "string"
+            },
+            "thread_ts": {
+              "type": "string"
+            },
+            "channel_id": {
+              "type": "string"
+            }
+          }
+        },
+        "payload_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": [
+            "token",
+            "team_id",
+            "context_team_id",
+            "context_enterprise_id",
+            "api_app_id",
+            "event",
+            "type",
+            "event_id",
+            "event_time",
+            "authorizations",
+            "is_ext_shared_channel"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "event": {
+              "type": "object",
+              "required": [
+                "ts",
+                "team",
+                "text",
+                "type",
+                "user",
+                "blocks",
+                "channel",
+                "event_ts",
+                "channel_type",
+                "client_msg_id"
+              ],
+              "properties": {
+                "ts": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                },
+                "blocks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["type", "block_id", "elements"],
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "block_id": {
+                        "type": "string"
+                      },
+                      "elements": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["type"],
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "elements": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["type", "text"],
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "channel": {
+                  "type": "string"
+                },
+                "event_ts": {
+                  "type": "string"
+                },
+                "channel_type": {
+                  "type": "string"
+                },
+                "client_msg_id": {
+                  "type": "string"
+                },
+                "assistant_thread": {
+                  "type": "object",
+                  "required": ["action_token"],
+                  "properties": {
+                    "action_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "token": {
+              "type": "string"
+            },
+            "team_id": {
+              "type": "string"
+            },
+            "event_id": {
+              "type": "string"
+            },
+            "api_app_id": {
+              "type": "string"
+            },
+            "event_time": {
+              "type": "integer"
+            },
+            "event_context": {
+              "type": "string"
+            },
+            "authorizations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "is_bot",
+                  "team_id",
+                  "user_id",
+                  "enterprise_id",
+                  "is_enterprise_install"
+                ],
+                "properties": {
+                  "is_bot": {
+                    "type": "boolean"
+                  },
+                  "team_id": {
+                    "type": "string"
+                  },
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "enterprise_id": {
+                    "type": "string"
+                  },
+                  "is_enterprise_install": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "context_team_id": {
+              "type": "string"
+            },
+            "context_enterprise_id": {
+              "type": "string"
+            },
+            "is_ext_shared_channel": {
+              "type": "boolean"
+            }
+          }
+        },
+        "payload_example": {}
+      },
+      {
+        "name": "slack_app_mention",
+        "event_type": "app_mention",
+        "description": "Triggered when the app is mentioned in a message",
+        "config_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": ["team_id", "channel_id"]
+        },
+        "payload_schema": {
+          "type": "object",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "required": [
+            "token",
+            "team_id",
+            "api_app_id",
+            "event",
+            "type",
+            "event_id",
+            "event_time",
+            "authorizations",
+            "is_ext_shared_channel"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "event": {
+              "type": "object",
+              "required": [
+                "ts",
+                "team",
+                "text",
+                "type",
+                "user",
+                "blocks",
+                "channel",
+                "event_ts",
+                "client_msg_id"
+              ],
+              "properties": {
+                "ts": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                },
+                "blocks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["type", "block_id", "elements"],
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "block_id": {
+                        "type": "string"
+                      },
+                      "elements": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["type"],
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "elements": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["type"],
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "user_id": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "channel": {
+                  "type": "string"
+                },
+                "event_ts": {
+                  "type": "string"
+                },
+                "client_msg_id": {
+                  "type": "string"
+                },
+                "assistant_thread": {
+                  "type": "object",
+                  "required": ["action_token"],
+                  "properties": {
+                    "action_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "token": {
+              "type": "string"
+            },
+            "team_id": {
+              "type": "string"
+            },
+            "event_id": {
+              "type": "string"
+            },
+            "api_app_id": {
+              "type": "string"
+            },
+            "event_time": {
+              "type": "integer"
+            },
+            "event_context": {
+              "type": "string"
+            },
+            "authorizations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "is_bot",
+                  "team_id",
+                  "user_id",
+                  "enterprise_id",
+                  "is_enterprise_install"
+                ],
+                "properties": {
+                  "is_bot": {
+                    "type": "boolean"
+                  },
+                  "team_id": {
+                    "type": "string"
+                  },
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "enterprise_id": {
+                    "type": "string"
+                  },
+                  "is_enterprise_install": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "is_ext_shared_channel": {
+              "type": "boolean"
+            }
+          }
+        },
+        "payload_example": {}
+      }
+    ]
+  },
+  {
+    "name": "jira",
+    "title": "Jira",
+    "description": "Jira connector for issue tracking and project management",
+    "auth_method": "OAUTH2",
+    "auth_provider": "LEMMA",
+    "operation_executor": "LEMMA",
+    "icon": null,
+    "config": {
+      "access_token_path": "access_token",
+      "refresh_token_path": "refresh_token"
+    },
+    "system_oauth": {
+      "client_id_env": "JIRA_CLIENT_ID",
+      "client_secret_env": "JIRA_CLIENT_SECRET"
+    },
+    "oauth2_config": {
+      "token_url": "https://auth.atlassian.com/oauth/token",
+      "revoke_url": "",
+      "userinfo_url": "https://api.atlassian.com/oauth/token/accessible-resources",
+      "authorization_url": "https://auth.atlassian.com/authorize",
+      "extra_params": {
+        "audience": "api.atlassian.com",
+        "grant_type": "refresh_token"
+      },
+      "default_scopes": [
+        "read:me",
+        "read:jira-user",
+        "read:jira-work",
+        "write:jira-work",
+        "manage:jira-project",
+        "manage:jira-configuration",
+        "manage:jira-webhook",
+        "offline_access",
+        "write:board-scope.admin:jira-software",
+        "read:board-scope.admin:jira-software",
+        "delete:board-scope.admin:jira-software",
+        "write:board-scope:jira-software",
+        "read:board-scope:jira-software",
+        "read:epic:jira-software",
+        "write:epic:jira-software",
+        "read:issue:jira-software",
+        "write:issue:jira-software",
+        "read:sprint:jira-software",
+        "write:sprint:jira-software",
+        "delete:sprint:jira-software",
+        "read:remote-link:jira-software",
+        "write:remote-link:jira-software",
+        "read:project:jira"
+      ]
+    },
+    "agent_instruction": "Use Jira to manage issues, sprints, projects, and boards. Create, update, and query issues, manage workflows, and track project progress.",
+    "is_active": true,
+    "triggers": []
+  },
+  {
+    "name": "teams",
+    "title": "Microsoft Teams",
+    "description": "Connect Lemma assistants to Microsoft Teams. Chat with the bot in direct messages or @mention it in channels.",
+    "auth_method": "OAUTH2",
+    "auth_provider": "LEMMA",
+    "operation_executor": "LEMMA",
+    "icon": null,
+    "config": {
+      "access_token_path": "access_token",
+      "refresh_token_path": "refresh_token"
+    },
+    "system_oauth": {
+      "client_id_env": "MICROSOFT_BOT_APP_ID",
+      "client_secret_env": "MICROSOFT_BOT_APP_PASSWORD"
+    },
+    "oauth2_config": {
+      "authorization_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "default_scopes": ["openid", "profile", "email"],
+      "extra_params": {
+        "prompt": "consent"
+      }
+    },
+    "agent_instruction": "Use Microsoft Teams to send messages and interact with users in channels and direct messages.",
+    "is_active": true,
+    "triggers": []
+  },
+  {
+    "name": "whatsapp",
+    "title": "WhatsApp Business",
+    "description": "Credential-managed WhatsApp Business surface connector for agent messaging.",
+    "auth_method": "API_KEY",
+    "icon": null,
+    "credential_schema": {
+      "type": "object",
+      "required": ["access_token", "phone_number_id"],
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "title": "Access Token",
+          "format": "password"
+        },
+        "phone_number_id": {
+          "type": "string",
+          "title": "Phone Number ID"
+        },
+        "waba_id": {
+          "type": "string",
+          "title": "WhatsApp Business Account ID"
+        },
+        "api_base_url": {
+          "type": "string",
+          "title": "API Base URL"
+        },
+        "app_secret": {
+          "type": "string",
+          "title": "App Secret",
+          "format": "password"
+        },
+        "verify_token": {
+          "type": "string",
+          "title": "Webhook Verify Token",
+          "format": "password"
+        }
+      },
+      "additionalProperties": true
+    },
+    "agent_instruction": "Use WhatsApp Business credentials to send and receive agent messages on WhatsApp surfaces.",
+    "is_active": true,
+    "triggers": []
+  },
+  {
+    "name": "telegram",
+    "title": "Telegram",
+    "description": "Credential-managed Telegram bot surface connector for agent messaging.",
+    "auth_method": "API_KEY",
+    "icon": null,
+    "credential_schema": {
+      "type": "object",
+      "required": ["bot_token"],
+      "properties": {
+        "bot_token": {
+          "type": "string",
+          "title": "Bot Token",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_instruction": "Use Telegram bot credentials to send and receive agent messages on Telegram surfaces.",
+    "is_active": true,
+    "triggers": []
+  },
+  {
+    "name": "confluence",
+    "title": "Confluence",
+    "description": "Confluence connector for documentation and knowledge management",
+    "auth_method": "OAUTH2",
+    "auth_provider": "LEMMA",
+    "operation_executor": "LEMMA",
+    "icon": null,
+    "config": {
+      "access_token_path": "access_token",
+      "refresh_token_path": "refresh_token"
+    },
+    "system_oauth": {
+      "client_id_env": "CONFLUENCE_CLIENT_ID",
+      "client_secret_env": "CONFLUENCE_CLIENT_SECRET"
+    },
+    "oauth2_config": {
+      "token_url": "https://auth.atlassian.com/oauth/token",
+      "revoke_url": "",
+      "userinfo_url": "https://api.atlassian.com/oauth/token/accessible-resources",
+      "authorization_url": "https://auth.atlassian.com/authorize",
+      "extra_params": {
+        "audience": "api.atlassian.com",
+        "grant_type": "refresh_token"
+      },
+      "default_scopes": [
+        "read:me",
+        "read:confluence-space.summary",
+        "read:confluence-prototype:content",
+        "read:confluence-content.summary",
+        "read:confluence-content.all",
+        "write:confluence-content",
+        "delete:confluence-content",
+        "read:confluence-groups",
+        "manage:confluence-configuration",
+        "offline_access"
+      ]
+    },
+    "agent_instruction": "Use Confluence to create, read, update, and manage pages and spaces. Access documentation, knowledge bases, and team wikis.",
+    "is_active": true,
+    "triggers": []
+  }
+]

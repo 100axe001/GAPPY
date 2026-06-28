@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="slack-title">
+  <title id="slack-title">Slack</title>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#fff"/>
+  <path d="M23.5 34.5a5.5 5.5 0 1 1-5.5 5.5v-5.5h5.5Z" fill="#2EB67D"/>
+  <path d="M26.5 34.5a5.5 5.5 0 0 1 11 0v13a5.5 5.5 0 0 1-11 0v-13Z" fill="#2EB67D"/>
+  <path d="M29.5 23.5a5.5 5.5 0 1 1-5.5-5.5h5.5v5.5Z" fill="#E01E5A"/>
+  <path d="M29.5 26.5a5.5 5.5 0 0 1 0 11h-13a5.5 5.5 0 0 1 0-11h13Z" fill="#E01E5A"/>
+  <path d="M40.5 29.5a5.5 5.5 0 1 1 5.5-5.5v5.5h-5.5Z" fill="#ECB22E"/>
+  <path d="M37.5 29.5a5.5 5.5 0 0 1-11 0v-13a5.5 5.5 0 0 1 11 0v13Z" fill="#ECB22E"/>
+  <path d="M34.5 40.5a5.5 5.5 0 1 1 5.5 5.5h-5.5v-5.5Z" fill="#36C5F0"/>
+  <path d="M34.5 37.5a5.5 5.5 0 0 1 0-11h13a5.5 5.5 0 0 1 0 11h-13Z" fill="#36C5F0"/>
+</svg>

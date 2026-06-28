@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>__LEMMA_APP_TITLE__</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #faf8f3;
+        --card: #fffdf8;
+        --ink: #1c1a17;
+        --muted: #6f6658;
+        --line: #ece6da;
+        --gold: #c9a227;
+        --good: #5c7a53;
+        --serif: "Fraunces", ui-serif, Georgia, serif;
+        --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+        --glow: #fdf6e6;
+        --chip: #f3efe6;
+      }
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --paper: #15130d; --card: #1e1b14; --ink: #f1ead9; --muted: #a99f8b;
+        --line: #2e2a20; --gold: #e0bd4a; --good: #7fa06f; --glow: #2a2413; --chip: #2c281f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100dvh; background:
+          radial-gradient(120% 90% at 100% 0%, var(--glow) 0%, rgba(253,246,230,0) 55%),
+          var(--paper);
+        color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55;
+        transition: background-color .25s ease, color .25s ease;
+      }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: clamp(1.2rem, 4vw, 3rem); }
+      .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+      .eyebrow { font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+      h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.9rem, 5vw, 3rem);
+        letter-spacing: -.015em; margin: .25rem 0 0; line-height: 1.05; }
+      h1 .spark { color: var(--gold); }
+      .sub { color: var(--muted); margin: .5rem 0 0; max-width: 46ch; }
+      .pill { display: inline-flex; align-items: center; gap: .45rem; font-size: .8rem; color: var(--muted);
+        background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: .4rem .8rem; }
+      .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(92,122,83,.5);
+        animation: pulse 2.4s infinite; }
+      @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(92,122,83,.45); } 70% { box-shadow: 0 0 0 7px rgba(92,122,83,0); } 100% { box-shadow: 0 0 0 0 rgba(92,122,83,0); } }
+      .pill button { font: inherit; cursor: pointer; border: none; background: none; color: var(--ink); text-decoration: underline; padding: 0; }
+      .pill #theme { text-decoration: none; font-size: .95rem; line-height: 1; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .8rem; margin-top: 1.8rem; }
+      .stat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem; }
+      .stat .n { font-family: var(--serif); font-size: 1.9rem; line-height: 1; }
+      .stat .l { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .45rem; }
+      .grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 1rem; margin-top: 1rem; align-items: stretch; }
+      @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+      .panel { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 1.3rem 1.4rem;
+        box-shadow: 0 16px 40px rgba(70, 55, 25, .05); }
+      .panel h2 { font-family: var(--serif); font-weight: 500; font-size: 1.15rem; margin: 0 0 .15rem; letter-spacing: -.01em; }
+      .panel .cap { color: var(--muted); font-size: .82rem; margin: 0 0 1rem; }
+      .panel.empty { margin-top: 1rem; }
+      .panel.empty svg { margin-top: 1rem; opacity: .8; }
+      .donut-wrap { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; }
+      .legend { display: grid; gap: .5rem; min-width: 130px; flex: 1; }
+      .legend .row { display: flex; align-items: center; gap: .55rem; font-size: .86rem; }
+      .legend .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+      .legend .row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+      .reclist { margin-top: .4rem; display: grid; gap: .5rem; }
+      .rec { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid var(--line);
+        border-radius: 12px; background: var(--card); }
+      .rec .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rec .s { margin-left: auto; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .how { margin-top: 1rem; }
+      .how .tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .9rem; }
+      .how .tabs button { font: inherit; font-size: .84rem; cursor: pointer; border: 1px solid var(--line);
+        background: var(--card); color: var(--muted); border-radius: 999px; padding: .35rem .85rem; }
+      .how .tabs button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+      pre { margin: 0; background: #1f1c18; color: #f3ecdd; border-radius: 14px; padding: 1rem 1.1rem;
+        font-family: var(--mono); font-size: .82rem; line-height: 1.6; overflow: auto; }
+      pre .k { color: #e3b341; } pre .s { color: #9fcaa0; } pre .c { color: #8a8275; }
+      .copy { float: right; font: inherit; font-size: .74rem; cursor: pointer; color: var(--muted);
+        background: none; border: 1px solid var(--line); border-radius: 8px; padding: .15rem .5rem; margin: -.2rem 0 .4rem .4rem; }
+      footer { margin-top: 1.6rem; color: var(--muted); font-size: .82rem; }
+      footer code { font-family: var(--mono); background: var(--chip); padding: .1rem .4rem; border-radius: 6px; }
+      .center { min-height: 86dvh; display: grid; place-items: center; text-align: center; }
+      .center .box { max-width: 26rem; }
+      .center button { margin-top: 1.3rem; padding: .75rem 1.6rem; font: inherit; font-weight: 600; cursor: pointer;
+        border: none; border-radius: 999px; background: var(--gold); color: #1c1a17; }
+      svg { display: block; max-width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="app"><div class="center"><div class="box"><p>Loading…</p></div></div></div>
+
+    <!--
+      No-build authenticated app. Pod context (podId / apiUrl / authUrl) is
+      injected by the Lemma host at serve time as window.__LEMMA_CONFIG__, so
+      nothing is baked in. Edit this file freely, then `lemma apps deploy`.
+    -->
+    <script>
+      (function () {
+        var cfg = window.__LEMMA_CONFIG__ || {};
+        var base = (cfg.apiUrl || window.location.origin).replace(/\/$/, "");
+        var s = document.createElement("script");
+        s.src = base + "/public/sdk/lemma-client.js";
+        s.onload = boot;
+        s.onerror = function () { fatal("Couldn't load the Lemma SDK from " + s.src); };
+        document.head.appendChild(s);
+      })();
+
+      var PALETTE = ["#c9a227", "#c2683f", "#5c7a53", "#3b6ea5", "#7a5c7e", "#b08968", "#4c8a7b", "#a23b3b"];
+      var CATS = ["status", "state", "stage", "priority", "type", "category", "kind", "label"];
+      var client;
+
+      function $(id) { return document.getElementById(id); }
+      function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+      function field(r, k) { return (r && r.data && r.data[k] != null) ? r.data[k] : (r ? r[k] : undefined); }
+      function listOf(resp) { return (resp && (resp.items || resp.data)) || (Array.isArray(resp) ? resp : []); }
+      function fatal(msg) { $("app").innerHTML = '<div class="center"><div class="box"><h1>⚠</h1><p>' + esc(msg) + "</p></div></div>"; }
+
+      function currentTheme() { try { return localStorage.getItem("lemma-app-theme") || "light"; } catch (e) { return "light"; } }
+      function applyTheme(t) {
+        document.documentElement.setAttribute("data-theme", t);
+        try { localStorage.setItem("lemma-app-theme", t); } catch (e) {}
+        var b = $("theme"); if (b) b.textContent = t === "dark" ? "☀" : "☾";
+      }
+      // A clean handle for the greeting — never dump a raw email address.
+      function firstName(user) {
+        if (user && user.name) return String(user.name).trim().split(/\s+/)[0];
+        if (user && user.email) {
+          var local = String(user.email).split("@")[0].replace(/[._-]+/g, " ").replace(/[0-9]+/g, "").trim().split(" ")[0];
+          if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+        }
+        return "there";
+      }
+
+      async function boot() {
+        applyTheme(currentTheme());
+        try {
+          client = new window.LemmaClient.LemmaClient(); // reads __LEMMA_CONFIG__
+          var auth = await client.initialize();
+          if (auth.status !== "authenticated") return signIn();
+          var data = await discover();
+          render(auth.user, data);
+        } catch (e) { fatal((e && e.message) || "Something went wrong."); }
+      }
+
+      function signIn() {
+        $("app").innerHTML =
+          '<div class="center"><div class="box"><div class="eyebrow">__LEMMA_APP_TITLE__</div>' +
+          '<h1>Welcome<span class="spark">.</span></h1>' +
+          '<p class="sub" style="margin:.6rem auto 0">Sign in to open this app.</p>' +
+          '<button id="si">Sign in</button></div></div>';
+        $("si").onclick = function () { client.auth.redirectToAuth(); };
+      }
+
+      // Read every table once: capture row totals (for a "by table" fallback
+      // chart) and keep the first non-empty table's rows for the main charts.
+      async function discover() {
+        var tables = [];
+        try { tables = listOf(await client.tables.list()); } catch (e) {}
+        var fnNames = [];
+        try { fnNames = listOf(await client.functions.list()).map(function (f) { return field(f, "name"); }).filter(Boolean); } catch (e) {}
+        var infos = [], chosen = null;
+        for (var i = 0; i < tables.length; i++) {
+          var name = field(tables[i], "name");
+          if (!name) continue;
+          var resp;
+          try { resp = await client.records.list(name, { limit: 200 }); } catch (e) { continue; }
+          var rows = listOf(resp);
+          var total = (resp && resp.total != null) ? resp.total : rows.length;
+          infos.push({ name: name, total: total });
+          if (!chosen && rows.length) chosen = { table: name, records: rows, total: total };
+        }
+        return {
+          table: chosen ? chosen.table : (tables.length ? field(tables[0], "name") : null),
+          records: chosen ? chosen.records : [],
+          total: chosen ? chosen.total : 0,
+          tables: infos,
+          functions: fnNames,
+          tableCount: tables.length,
+        };
+      }
+
+      // Skip identifiers, free text, contacts, and numeric/sequence columns —
+      // none of which make a meaningful category breakdown.
+      var SKIP_COL = /(^id$|_id$|uuid|created_at|updated_at|description|sort_order|number|count|amount|price|total|qty|index|order|seq|score|rank|email|phone|url|title|^name$|notes?$)/i;
+      function pickCategory(records) {
+        var keys = {};
+        records.forEach(function (r) {
+          var src = (r && r.data) ? r.data : r;
+          Object.keys(src || {}).forEach(function (k) { keys[k] = 1; });
+        });
+        var ordered = CATS.filter(function (c) { return keys[c]; })
+          .concat(Object.keys(keys).filter(function (k) { return CATS.indexOf(k) < 0; }));
+        for (var i = 0; i < ordered.length; i++) {
+          var k = ordered[i];
+          if (SKIP_COL.test(k)) continue;
+          var vals = {}, n = 0;
+          records.forEach(function (r) { var v = field(r, k); if (v != null && v !== "" && typeof v !== "object") { vals[String(v)] = (vals[String(v)] || 0) + 1; n++; } });
+          var card = Object.keys(vals).length;
+          // Must cover most rows, be multi-valued, and actually repeat — a column
+          // where every value is unique (card === n) is an id, not a category.
+          var maxCard = Math.max(2, Math.min(7, Math.ceil(records.length * 0.6)));
+          if (n >= records.length * 0.6 && card >= 2 && card <= maxCard && card < n) {
+            return { key: k, counts: vals };
+          }
+        }
+        return null;
+      }
+
+      function timeSeries(records, days) {
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var buckets = [], idx = {};
+        for (var d = days - 1; d >= 0; d--) {
+          var dt = new Date(today); dt.setDate(today.getDate() - d);
+          var key = dt.toISOString().slice(0, 10);
+          idx[key] = buckets.length; buckets.push({ key: key, label: dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }), n: 0 });
+        }
+        records.forEach(function (r) {
+          var c = field(r, "created_at"); if (!c) return;
+          var key = String(c).slice(0, 10);
+          if (idx[key] != null) buckets[idx[key]].n++;
+        });
+        return buckets;
+      }
+
+      function render(user, data) {
+        // The scaffold knows nothing about this pod's schema. Charts are built
+        // only from whatever real table was discovered; an empty / non-tabular
+        // pod gets a clean welcome state, never fabricated data.
+        var records = data.records || [];
+        var hasData = records.length > 0;
+        var tableName = data.table;
+        var who = (user && (user.name || user.email)) || "";
+        var hour = new Date().getHours();
+        var greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+        var cat = pickCategory(records);
+        var series = timeSeries(records, 14);
+        var seriesTotal = series.reduce(function (a, b) { return a + b.n; }, 0);
+
+        var html =
+          '<div class="wrap"><div class="top"><div>' +
+          '<div class="eyebrow">__LEMMA_APP_TITLE__</div>' +
+          "<h1>" + esc(greet) + ", " + esc(firstName(user)) + '<span class="spark"> ✦</span></h1>' +
+          '<p class="sub">This app is talking to your pod live through the authenticated Lemma SDK. ' +
+          "Everything below is real data — edit <code style=\"font-family:var(--mono)\">index.html</code> to make it yours.</p></div>" +
+          '<div class="pill"><span class="pip"></span> connected' + (who ? " · " + esc(who) : "") +
+          ' · <button id="out">sign out</button> · <button id="theme" title="Toggle light / dark">☾</button></div></div>';
+
+        html += '<div class="stats">' +
+          statTile(data.total || records.length, "records") +
+          statTile(data.tableCount || 0, data.tableCount === 1 ? "table" : "tables") +
+          statTile((data.functions || []).length, "functions") +
+          statTile(seriesTotal, "added · 14d") + "</div>";
+
+        if (hasData) {
+          // Prefer a real category breakdown; else fall back to records-by-table
+          // (always meaningful, never schema-specific); else skip the donut.
+          var donutCounts = null, donutTitle = "", donutCap = "";
+          if (cat) {
+            donutCounts = cat.counts;
+            donutTitle = esc(cap(tableName)) + " · by " + esc(cat.key);
+            donutCap = "Breakdown of every record";
+          } else {
+            var filled = (data.tables || []).filter(function (t) { return t.total > 0; });
+            if (filled.length >= 2) {
+              donutCounts = {};
+              filled.forEach(function (t) { donutCounts[t.name] = t.total; });
+              donutTitle = "Records by table";
+              donutCap = "Across this pod";
+            }
+          }
+
+          var activityPanel = '<div class="panel">' +
+            "<h2>Activity</h2><p class=\"cap\">New records over the last 14 days</p>" +
+            area(series) +
+            '<div class="reclist">' + recentRows(records) + "</div></div>";
+
+          if (donutCounts) {
+            html += '<div class="grid"><div class="panel">' +
+              "<h2>" + donutTitle + "</h2><p class=\"cap\">" + donutCap + "</p>" +
+              '<div class="donut-wrap">' + donut(donutCounts) + "</div></div>" +
+              activityPanel + "</div>";
+          } else {
+            html += activityPanel;
+          }
+        } else {
+          html += '<div class="panel empty"><h2>Your pod is connected</h2>' +
+            '<p class="cap">No records to chart yet. Add data to any table in this pod and ' +
+            "it'll visualize here automatically — or wire your own view below.</p>" + emptyArt() + "</div>";
+        }
+
+        // A real column+value to seed the filter example — only when we found
+        // a genuine category in this pod's data.
+        var sample = null;
+        if (cat) {
+          var topVal = Object.keys(cat.counts).sort(function (a, b) { return cat.counts[b] - cat.counts[a]; })[0];
+          sample = { col: cat.key, val: topVal };
+        }
+        html += '<div class="panel how">' + howPanel(tableName, (data.functions || [])[0], sample) + "</div>";
+
+        html += '<footer>Built with the no-build HTML app scaffold. Loaded the SDK from ' +
+          '<code>/public/sdk/lemma-client.js</code>, read pod context from <code>window.__LEMMA_CONFIG__</code>. ' +
+          "Redeploy with <code>lemma apps deploy &lt;name&gt; ./index.html</code>.</footer></div>";
+
+        $("app").innerHTML = html;
+        applyTheme(currentTheme());
+        $("out").onclick = function () { client.auth.signOut().then(function () { location.reload(); }); };
+        $("theme").onclick = function () { applyTheme(currentTheme() === "dark" ? "light" : "dark"); };
+        wireHow();
+      }
+
+      function cap(s) { s = String(s || "data"); return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " "); }
+      function statTile(n, l) { return '<div class="stat"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + "</div></div>"; }
+
+      // A faint placeholder chart for pods with no records yet — purely decorative.
+      function emptyArt() {
+        var bars = [38, 56, 30, 70, 48, 84, 62], W = 520, H = 120, pad = 16;
+        var bw = (W - pad * 2) / bars.length - 10;
+        var rects = bars.map(function (h, i) {
+          var x = pad + i * ((W - pad * 2) / bars.length) + 5, y = H - pad - h;
+          return '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) +
+            '" height="' + h + '" rx="5" fill="#ece6da"/>';
+        }).join("");
+        return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" height="120" preserveAspectRatio="none" aria-hidden="true">' + rects + "</svg>";
+      }
+
+      // Find a human-readable label column; never show raw UUIDs as a title.
+      function labelField(records) {
+        var prefer = ["title", "name", "subject", "label", "company", "headline", "summary"];
+        var keys = {};
+        records.forEach(function (r) { var src = (r && r.data) ? r.data : r; Object.keys(src || {}).forEach(function (k) { keys[k] = 1; }); });
+        for (var i = 0; i < prefer.length; i++) { if (keys[prefer[i]]) return prefer[i]; }
+        var cand = Object.keys(keys).filter(function (k) { return !/(^id$|_id$|uuid|created_at|updated_at|sort_order)/i.test(k); });
+        for (var j = 0; j < cand.length; j++) {
+          var k = cand[j], ok = true, seen = 0;
+          for (var x = 0; x < records.length; x++) {
+            var v = field(records[x], k); if (v == null || v === "") continue;
+            seen++;
+            if (typeof v !== "string" || v.length > 64 || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v)) { ok = false; break; }
+          }
+          if (ok && seen) return k;
+        }
+        return null;
+      }
+
+      function recentRows(records) {
+        var lf = labelField(records);
+        var rows = records.slice().sort(function (a, b) {
+          return String(field(b, "created_at") || "").localeCompare(String(field(a, "created_at") || ""));
+        }).slice(0, 4);
+        if (!rows.length) return "";
+        return rows.map(function (r) {
+          var title = lf ? field(r, lf) : null;
+          if (title == null || title === "") title = "Record " + String(field(r, "id") || "—").slice(0, 8);
+          var c = field(r, "created_at");
+          var when = c ? new Date(c).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+          return '<div class="rec"><span class="t">' + esc(title) + '</span><span class="s">' + esc(when) + "</span></div>";
+        }).join("");
+      }
+
+      function donut(counts) {
+        var entries = Object.keys(counts).map(function (k) { return { k: k, n: counts[k] }; })
+          .sort(function (a, b) { return b.n - a.n; });
+        var total = entries.reduce(function (a, b) { return a + b.n; }, 0) || 1;
+        var R = 84, C = 110, sw = 24, circ = 2 * Math.PI * R, gap = entries.length > 1 ? 0.012 * circ : 0;
+        var off = 0, arcs = "";
+        entries.forEach(function (e, i) {
+          var frac = e.n / total, len = Math.max(circ * frac - gap, 0.001);
+          arcs += '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="none" stroke="' + PALETTE[i % PALETTE.length] +
+            '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + len + " " + (circ - len) +
+            '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 ' + C + " " + C + ')">' +
+            "<title>" + esc(e.k) + ": " + e.n + "</title></circle>";
+          off += circ * frac;
+        });
+        var svg = '<svg viewBox="0 0 220 220" width="200" height="200" role="img">' + arcs +
+          '<text x="' + C + '" y="' + (C - 4) + '" text-anchor="middle" font-family="var(--serif)" font-size="34" fill="currentColor">' + total + "</text>" +
+          '<text x="' + C + '" y="' + (C + 18) + '" text-anchor="middle" font-size="11" letter-spacing="1.5" fill="currentColor" opacity="0.55">TOTAL</text></svg>';
+        var legend = '<div class="legend">' + entries.map(function (e, i) {
+          return '<div class="row"><span class="dot" style="background:' + PALETTE[i % PALETTE.length] + '"></span>' +
+            esc(cap(e.k)) + "<b>" + e.n + "</b></div>";
+        }).join("") + "</div>";
+        return svg + legend;
+      }
+
+      function area(series) {
+        var W = 520, H = 150, pad = 22, max = Math.max.apply(null, series.map(function (d) { return d.n; }).concat(1));
+        var step = (W - pad * 2) / (series.length - 1 || 1);
+        var pts = series.map(function (d, i) {
+          return [pad + i * step, H - pad - (d.n / max) * (H - pad * 2)];
+        });
+        var line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+        var fill = line + " L" + pts[pts.length - 1][0].toFixed(1) + " " + (H - pad) + " L" + pts[0][0].toFixed(1) + " " + (H - pad) + " Z";
+        var dots = pts.map(function (p, i) {
+          return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.6" fill="#c9a227"><title>' +
+            esc(series[i].label) + ": " + series[i].n + "</title></circle>";
+        }).join("");
+        return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" height="150" preserveAspectRatio="none" role="img">' +
+          '<defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">' +
+          '<stop offset="0" stop-color="#c9a227" stop-opacity="0.28"/><stop offset="1" stop-color="#c9a227" stop-opacity="0"/></linearGradient></defs>' +
+          '<path d="' + fill + '" fill="url(#g)"/><path d="' + line + '" fill="none" stroke="#c9a227" stroke-width="2.2"/>' + dots +
+          '<text x="' + pad + '" y="' + (H - 5) + '" font-size="10" fill="#9a9082">' + esc(series[0].label) + "</text>" +
+          '<text x="' + (W - pad) + '" y="' + (H - 5) + '" font-size="10" fill="#9a9082" text-anchor="end">' + esc(series[series.length - 1].label) + "</text></svg>";
+      }
+
+      // "How this works" — copy-pasteable patterns that only ever reference
+      // REAL things: the discovered table name, `created_at` (present on every
+      // table), and a filter built from a column+value we actually observed.
+      // Never fabricate column names — a copied snippet must run as-is.
+      var SNIPS;
+      function howPanel(table, fn, sample) {
+        var tbl = str(table || "your_table");
+        var filterLine = sample
+          ? '\n<span class="c">// filter by a real column from this table</span>\n' +
+            "await client.records." + kw("list") + "(" + tbl +
+            ", { filters: { " + esc(sample.col) + ": " + lit(sample.val) + " } });"
+          : "";
+        SNIPS = {
+          query:
+            '<span class="c">// list records from a table</span>\n' +
+            "const res = await client.records." + kw("list") + "(" + tbl + ", { limit: 50 });\n" +
+            "const rows = res.items;\n" +
+            '<span class="c">// sort by any column — created_at exists on every table</span>\n' +
+            "await client.records." + kw("list") + "(" + tbl +
+            ", { sort: [{ field: " + str("created_at") + ", dir: " + str("desc") + " }] });" +
+            filterLine,
+          write:
+            '<span class="c">// create / update — use this table\'s own columns</span>\n' +
+            "await client.records." + kw("create") + "(" + tbl + ", { " + '<span class="c">/* column: value */</span>' + " });\n" +
+            "await client.records." + kw("update") + "(" + tbl + ", id, { " + '<span class="c">/* column: value */</span>' + " });",
+          fn:
+            '<span class="c">// run a pod function' + (fn ? "" : " (none defined in this pod yet)") + '</span>\n' +
+            "const out = await client.functions." + kw("call") + "(" + str(fn || "your_function") + ", { " + '<span class="c">/* args */</span>' + " });\n\n" +
+            '<span class="c">// or chat with an agent (use one of your pod\'s agent names)</span>\n' +
+            "const convo = await client.conversations." + kw("create") + "({ agent_name: " + str("your_agent") + " });\n" +
+            "await client.conversations." + kw("sendMessage") + "(convo.id, { content: " + str("Hi!") + " });",
+        };
+        return "<h2>How this works</h2><p class=\"cap\">Live patterns against this pod — copy, paste, build.</p>" +
+          '<div class="tabs">' +
+          '<button data-s="query" class="on">Query</button>' +
+          '<button data-s="write">Write</button>' +
+          '<button data-s="fn">Functions &amp; agents</button></div>' +
+          '<button class="copy" id="copyBtn">copy</button>' +
+          '<pre id="snip">' + SNIPS.query + "</pre>";
+      }
+      function kw(s) { return '<span class="k">' + s + "</span>"; }
+      function str(s) { return '<span class="s">"' + esc(s) + '"</span>'; }
+      // Render a literal: numbers unquoted, everything else as a quoted string.
+      function lit(v) { return /^-?\d+(\.\d+)?$/.test(String(v)) ? '<span class="s">' + esc(v) + "</span>" : str(v); }
+      function wireHow() {
+        var tabs = document.querySelectorAll(".how .tabs button");
+        tabs.forEach(function (b) {
+          b.onclick = function () {
+            tabs.forEach(function (x) { x.classList.remove("on"); });
+            b.classList.add("on");
+            $("snip").innerHTML = SNIPS[b.getAttribute("data-s")];
+          };
+        });
+        $("copyBtn").onclick = function () {
+          var txt = $("snip").textContent;
+          navigator.clipboard && navigator.clipboard.writeText(txt);
+          $("copyBtn").textContent = "copied ✓";
+          setTimeout(function () { $("copyBtn").textContent = "copy"; }, 1400);
+        };
+      }
+    </script>
+  </body>
+</html>

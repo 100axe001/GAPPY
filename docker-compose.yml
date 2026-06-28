@@ -1,0 +1,44 @@
+services:
+  lifeos-db:
+    image: postgres:15-alpine
+    container_name: lifeos-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lifeos
+    ports:
+      - "5433:5432"
+    volumes:
+      - lifeos_postgres_data:/var/lib/postgresql/data
+    networks:
+      - lemma-local-net
+
+  lifeos-app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: lifeos-app
+    depends_on:
+      - lifeos-db
+    ports:
+      - "8081:8080"
+    environment:
+      - LIFEOS_DATABASE_URL=postgresql+asyncpg://postgres:postgres@lifeos-db:5432/lifeos
+      - LEMMA_BASE_URL=http://lemma-local-backend:8000
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - BACKEND_URL=${BACKEND_URL}
+    volumes:
+      # Mount ~/.lemma directory to automatically pass host authentication credentials
+      - ~/.lemma:/root/.lemma:ro
+    networks:
+      - lemma-local-net
+
+volumes:
+  lifeos_postgres_data:
+
+networks:
+  lemma-local-net:
+    external: true

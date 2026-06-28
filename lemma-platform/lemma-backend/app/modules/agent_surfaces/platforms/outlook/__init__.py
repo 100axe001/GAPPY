@@ -1,0 +1,1 @@
+"""Outlook agent surface adapter."""

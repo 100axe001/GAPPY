@@ -1,0 +1,115 @@
+{
+    "display_information": {
+        "name": "Lemma"
+    },
+    "features": {
+        "bot_user": {
+            "display_name": "Lemma",
+            "always_online": true
+        }
+    },
+    "oauth_config": {
+        "redirect_urls": [
+            "https://api.lemma.work/integrations/connect-requests/oauth/callback"
+        ],
+        "scopes": {
+            "user": [
+                "bookmarks:read",
+                "bookmarks:write",
+                "calls:read",
+                "calls:write",
+                "canvases:read",
+                "canvases:write",
+                "channels:history",
+                "channels:read",
+                "channels:write",
+                "chat:write",
+                "dnd:read",
+                "dnd:write",
+                "emoji:read",
+                "files:read",
+                "files:write",
+                "groups:read",
+                "groups:write",
+                "im:history",
+                "im:read",
+                "im:write",
+                "links.embed:write",
+                "links:read",
+                "links:write",
+                "mpim:history",
+                "mpim:read",
+                "mpim:write",
+                "mpim:write.topic",
+                "pins:read",
+                "pins:write",
+                "reactions:read",
+                "reactions:write",
+                "reminders:read",
+                "reminders:write",
+                "remote_files:read",
+                "remote_files:share",
+                "search:read",
+                "team:read",
+                "usergroups:read",
+                "usergroups:write",
+                "users.profile:read",
+                "users.profile:write",
+                "users:read",
+                "users:read.email",
+                "users:write"
+            ],
+            "bot": [
+                "app_mentions:read",
+                "assistant:write",
+                "bookmarks:read",
+                "calls:read",
+                "channels:history",
+                "channels:manage",
+                "channels:read",
+                "chat:write",
+                "chat:write.customize",
+                "chat:write.public",
+                "files:read",
+                "files:write",
+                "groups:write",
+                "im:history",
+                "im:read",
+                "im:write",
+                "im:write.topic",
+                "mpim:history",
+                "mpim:read",
+                "mpim:write",
+                "bookmarks:write",
+                "reactions:read",
+                "reactions:write",
+                "users:read",
+                "users:read.email",
+                "users.profile:read"
+            ]
+        },
+        "pkce_enabled": false
+    },
+    "settings": {
+        "event_subscriptions": {
+            "request_url": "https://api.lemma.work/surfaces/webhooks/slack",
+            "user_events": [
+                "message.channels"
+            ],
+            "bot_events": [
+                "app_mention",
+                "assistant_thread_started",
+                "message.channels",
+                "message.im"
+            ]
+        },
+        "interactivity": {
+            "is_enabled": true,
+            "request_url": "https://api.lemma.work/surfaces/webhooks/slack"
+        },
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": false,
+        "token_rotation_enabled": false,
+        "is_mcp_enabled": false
+    }
+}

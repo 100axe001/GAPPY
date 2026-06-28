@@ -1,0 +1,58 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.5",
+  "id": "9a826168-a747-4d7d-9c8a-42d9cedf5a06",
+  "name": {
+    "short": "Lemma",
+    "full": "Lemma AI Assistant"
+  },
+  "description": {
+    "short": "AI-powered assistant for your team",
+    "full": "Lemma connects your Microsoft Teams workspace to AI-powered pod assistants. Chat with the bot directly or @mention it in channels."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#6366F1",
+  "developer": {
+    "name": "Lemma",
+    "websiteUrl": "https://lemma.work",
+    "privacyUrl": "https://lemma.work/privacy",
+    "termsOfUseUrl": "https://lemma.work/terms"
+  },
+  "bots": [
+    {
+      "botId": "c3e201f2-a8ef-4026-bef4-d3da0153b191",
+      "scopes": [
+        "team",
+        "personal",
+        "groupChat"
+      ],
+      "supportsFiles": true,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "team",
+            "personal",
+            "groupChat"
+          ],
+          "commands": [
+            {
+              "title": "help",
+              "description": "Show how to use this assistant"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity"
+  ],
+  "validDomains": [
+    "lemma.work"
+  ]
+}

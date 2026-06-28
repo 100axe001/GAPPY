@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from lemma_cli.cli_core import state as cli_state
+from lemma_sdk.errors import LemmaAPIError
+
+
+def _state(config_path: Path, config: dict) -> cli_state.CliState:
+    root_config = {
+        "active_server": "default",
+        "servers": {"default": config},
+    }
+    return cli_state.CliState(
+        config_path=config_path,
+        config=config,
+        root_config=root_config,
+        server="default",
+        server_source="config",
+        server_read_only=False,
+        base_url="https://api.example.test",
+        auth_url=None,
+        token=None,
+        timeout=5.0,
+        no_verify_ssl=False,
+        output="json",
+    )
+
+
+def test_refresh_and_retry_reuses_tokens_rotated_by_another_process(
+    tmp_path, monkeypatch
+):
+    config_path = tmp_path / "config.json"
+    stale_config = {
+        "auth": {
+            "access_token": "old-access",
+            "refresh_token": "old-refresh",
+        }
+    }
+    fresh_config = {
+        "auth": {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+        },
+        "defaults": {},
+    }
+    cli_state.save_config(
+        config_path,
+        {"active_server": "default", "servers": {"default": fresh_config}},
+    )
+    state = _state(config_path, stale_config)
+    calls = {"fn": 0, "refresh": 0}
+
+    def fake_refresh(**kwargs):
+        calls["refresh"] += 1
+        raise AssertionError("refresh should not reuse the stale token")
+
+    def fn():
+        calls["fn"] += 1
+        if calls["fn"] == 1:
+            raise LemmaAPIError(status_code=401, message="expired")
+        return cli_state.get_access_token_from_config(state.config)
+
+    monkeypatch.setattr(cli_state, "refresh_cli_session", fake_refresh)
+
+    assert cli_state.refresh_and_retry(state, fn) == "new-access"
+    assert calls == {"fn": 2, "refresh": 0}
+    assert state.config == fresh_config
+
+
+def test_refresh_and_retry_persists_rotated_refresh_token(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.json"
+    initial_config = {
+        "auth": {
+            "access_token": "old-access",
+            "refresh_token": "old-refresh",
+        },
+        "defaults": {"org_id": "org_123"},
+    }
+    cli_state.save_config(
+        config_path,
+        {"active_server": "default", "servers": {"default": initial_config}},
+    )
+    state = _state(config_path, initial_config)
+    calls = {"fn": 0}
+
+    def fake_refresh(**kwargs):
+        assert kwargs["base_url"] == "https://api.example.test"
+        assert kwargs["refresh_token"] == "old-refresh"
+        return {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "access_token_expires_at": 123,
+            "session_handle": "session",
+            "user_id": "user",
+        }
+
+    def fn():
+        calls["fn"] += 1
+        if calls["fn"] == 1:
+            raise LemmaAPIError(status_code=401, message="expired")
+        return cli_state.get_refresh_token_from_config(state.config)
+
+    monkeypatch.setattr(cli_state, "refresh_cli_session", fake_refresh)
+
+    assert cli_state.refresh_and_retry(state, fn) == "new-refresh"
+    saved = cli_state.load_config(config_path)
+    saved_context = saved["servers"]["default"]
+    assert saved_context["auth"]["access_token"] == "new-access"
+    assert saved_context["auth"]["refresh_token"] == "new-refresh"
+    assert saved_context["refresh_token"] == "new-refresh"
+    assert saved_context["defaults"] == {"org_id": "org_123"}
+
+
+def test_refresh_auth_session_can_be_used_before_long_lived_commands(
+    tmp_path, monkeypatch
+):
+    config_path = tmp_path / "config.json"
+    initial_config = {
+        "auth": {
+            "access_token": "old-access",
+            "refresh_token": "old-refresh",
+        },
+        "defaults": {},
+    }
+    cli_state.save_config(
+        config_path,
+        {"active_server": "default", "servers": {"default": initial_config}},
+    )
+    state = _state(config_path, initial_config)
+
+    def fake_refresh(**kwargs):
+        assert kwargs["refresh_token"] == "old-refresh"
+        return {
+            "access_token": "fresh-access",
+            "refresh_token": "fresh-refresh",
+            "access_token_expires_at": 123,
+            "session_handle": "session",
+            "user_id": "user",
+        }
+
+    monkeypatch.setattr(cli_state, "refresh_cli_session", fake_refresh)
+
+    assert cli_state.refresh_auth_session(state) is True
+    assert cli_state.get_access_token_from_config(state.config) == "fresh-access"
+    saved = cli_state.load_config(config_path)
+    saved_context = saved["servers"]["default"]
+    assert saved_context["auth"]["access_token"] == "fresh-access"
+    assert saved_context["refresh_token"] == "fresh-refresh"

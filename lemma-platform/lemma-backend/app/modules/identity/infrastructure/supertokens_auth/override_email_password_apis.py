@@ -1,0 +1,108 @@
+from typing import Any, Dict, List, Union
+
+from supertokens_python.recipe.emailpassword.interfaces import (
+    APIInterface,
+    APIOptions,
+    EmailAlreadyExistsError,
+    GeneralErrorResponse,
+    SignInPostNotAllowedResponse,
+    SignInPostOkResult,
+    SignUpPostNotAllowedResponse,
+    SignUpPostOkResult,
+    WrongCredentialsError,
+)
+from supertokens_python.recipe.emailpassword.types import FormField
+from supertokens_python.recipe.session.interfaces import SessionContainer
+
+from app.modules.identity.infrastructure.supertokens_auth.auth_method_conflicts import (
+    get_conflicting_thirdparty_id,
+    get_thirdparty_conflict_reason,
+    has_emailpassword_login_method,
+    list_users_by_email,
+)
+
+
+def override_emailpassword_apis(original_implementation: APIInterface) -> APIInterface:
+    original_sign_in_post = original_implementation.sign_in_post
+    original_sign_up_post = original_implementation.sign_up_post
+
+    async def sign_in_post(
+        form_fields: List[FormField],
+        tenant_id: str,
+        session: Union[SessionContainer, None],
+        should_try_linking_with_session_user: Union[bool, None],
+        api_options: APIOptions,
+        user_context: Dict[str, Any],
+    ) -> Union[
+        SignInPostOkResult,
+        WrongCredentialsError,
+        SignInPostNotAllowedResponse,
+        GeneralErrorResponse,
+    ]:
+        email = _get_email(form_fields)
+        users = await list_users_by_email(
+            tenant_id=tenant_id,
+            email=email,
+            user_context=user_context,
+        )
+
+        if not has_emailpassword_login_method(users, email):
+            conflicting_thirdparty_id = get_conflicting_thirdparty_id(users, email=email)
+            if conflicting_thirdparty_id is not None:
+                return SignInPostNotAllowedResponse(
+                    get_thirdparty_conflict_reason(conflicting_thirdparty_id)
+                )
+
+        return await original_sign_in_post(
+            form_fields,
+            tenant_id,
+            session,
+            should_try_linking_with_session_user,
+            api_options,
+            user_context,
+        )
+
+    async def sign_up_post(
+        form_fields: List[FormField],
+        tenant_id: str,
+        session: Union[SessionContainer, None],
+        should_try_linking_with_session_user: Union[bool, None],
+        api_options: APIOptions,
+        user_context: Dict[str, Any],
+    ) -> Union[
+        SignUpPostOkResult,
+        EmailAlreadyExistsError,
+        SignUpPostNotAllowedResponse,
+        GeneralErrorResponse,
+    ]:
+        email = _get_email(form_fields)
+        users = await list_users_by_email(
+            tenant_id=tenant_id,
+            email=email,
+            user_context=user_context,
+        )
+
+        if not has_emailpassword_login_method(users, email):
+            conflicting_thirdparty_id = get_conflicting_thirdparty_id(users, email=email)
+            if conflicting_thirdparty_id is not None:
+                return SignUpPostNotAllowedResponse(
+                    get_thirdparty_conflict_reason(conflicting_thirdparty_id)
+                )
+
+        return await original_sign_up_post(
+            form_fields,
+            tenant_id,
+            session,
+            should_try_linking_with_session_user,
+            api_options,
+            user_context,
+        )
+
+    original_implementation.sign_in_post = sign_in_post
+    original_implementation.sign_up_post = sign_up_post
+
+    return original_implementation
+
+
+def _get_email(form_fields: List[FormField]) -> str:
+    return next(field.value for field in form_fields if field.id == "email")

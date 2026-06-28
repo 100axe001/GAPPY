@@ -1,0 +1,2842 @@
+[
+  {
+    "tool_name": "ask_user",
+    "toolset": "USER_INTERACTION",
+    "description": "Ask the user one or more multiple-choice questions and wait for their answers.\n\nUse this to get a decision or clarification you genuinely cannot infer \u2014 for\nexample which of several approaches to take, or a missing preference. Present a\nshort series of questions, each with 2-4 concrete options, and mark the option\nyou recommend (`recommended: true`). The run pauses while the client renders\nthe questions; the user picks an option per question (or types their own answer\nvia an always-available \"Other\"), and the chosen answers come back in\n`answers`, keyed by each question's `header`.\n\nPrefer this over a prose question whenever the answer is a choice among known\noptions. For free-form structured input (several typed fields at once), render\na FORM with `display_resource` instead. Only ask when it changes what you do\nnext \u2014 don't ask about things with an obvious default; just proceed.",
+    "input_schema": {
+      "$defs": {
+        "AskUserOption": {
+          "properties": {
+            "label": {
+              "description": "The choice shown to the user \u2014 concise (1-5 words).",
+              "type": "string"
+            },
+            "description": {
+              "default": "",
+              "description": "Optional one-line explanation of what this option means.",
+              "type": "string"
+            },
+            "recommended": {
+              "default": false,
+              "description": "Set on the option you recommend; the client highlights it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "title": "AskUserOption",
+          "type": "object"
+        },
+        "AskUserQuestion": {
+          "properties": {
+            "question": {
+              "description": "The full question to ask the user.",
+              "type": "string"
+            },
+            "header": {
+              "description": "Very short label for this question (a few words), shown as a chip and used as the key for this question's answer.",
+              "type": "string"
+            },
+            "options": {
+              "description": "2-4 distinct choices for the user to pick from.",
+              "items": {
+                "$ref": "#/$defs/AskUserOption"
+              },
+              "type": "array"
+            },
+            "multi_select": {
+              "default": false,
+              "description": "Allow the user to select multiple options instead of just one.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question",
+            "header",
+            "options"
+          ],
+          "title": "AskUserQuestion",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "questions": {
+          "description": "One or more questions to ask the user at once. Each has a short header, the question text, and 2-4 options. The user can always also choose 'Other' and type a custom answer, so do NOT add an 'Other' option yourself.",
+          "items": {
+            "$ref": "#/$defs/AskUserQuestion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "questions"
+      ],
+      "title": "AskUserRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "description": "Result of an ``ask_user`` call: the user's answers to the questions.",
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "answers": {
+          "additionalProperties": true,
+          "description": "The user's answers keyed by each question's header. Each value is the chosen option label(s) or the custom text they typed for 'Other'.",
+          "type": "object"
+        }
+      },
+      "title": "AskUserResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "display_resource",
+    "toolset": "USER_INTERACTION",
+    "description": "Display a user-facing resource or richer interaction.\n\nPrefer this tool whenever the user would benefit from seeing, inspecting, or\nacting on something instead of receiving prose only. Text is good for brief\nnarration, but users often want a concrete surface:\n- asking multiple structured questions: render a FORM instead of asking\n  several prose questions at once.\n- showing complex data, charts, previews, or custom visuals: render a WIDGET\n  instead of dumping dense text.\n- creating or updating pod resources: display the created or changed AGENT,\n  FUNCTION, WORKFLOW, DESK, SCHEDULE, TABLE, or FILE instead of only saying\n  that it was created.\n- showing datastore records or resource lists: display the TABLE or resource\n  directly so the user can inspect it.\n\nUse this for every \"show this to the user\" action: pod files, datastore\ntables, agents, functions, workflows, desks, schedules, widgets, and forms.",
+    "input_schema": {
+      "$defs": {
+        "DisplayResourceType": {
+          "enum": [
+            "BROWSER",
+            "FILE",
+            "TABLE",
+            "AGENT",
+            "FUNCTION",
+            "WORKFLOW",
+            "DESK",
+            "SCHEDULE",
+            "WIDGET",
+            "FORM"
+          ],
+          "title": "DisplayResourceType",
+          "type": "string"
+        },
+        "RecordFilter": {
+          "properties": {
+            "field": {
+              "description": "Table column name to filter on.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/RecordFilterOperator",
+              "default": "eq",
+              "description": "Comparison operator to apply."
+            },
+            "value": {
+              "description": "Filter comparison value."
+            }
+          },
+          "required": [
+            "field",
+            "value"
+          ],
+          "title": "RecordFilter",
+          "type": "object"
+        },
+        "RecordFilterOperator": {
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "like",
+            "ilike"
+          ],
+          "title": "RecordFilterOperator",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/DisplayResourceType",
+          "description": "Kind of resource the user should see."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique pod resource name within the selected type. Omit name to display all resources of that type."
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Full pod-visible file path for FILE resources. Do not pass private workspace paths."
+        },
+        "public_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Public URL to embed or open for WIDGET resources."
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Inline renderable content for WIDGET resources, such as raw SVG or HTML. Do not include DOCTYPE, <html>, <head>, or <body> tags."
+        },
+        "loading_messages": {
+          "description": "For WIDGET resources, optional loading messages shown while the visual renders.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4,
+          "type": "array"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For FORM resources, a JSON Schema object describing the form fields. It MUST contain a non-empty 'properties' map (one entry per field, each a JSON Schema with a 'type' and optional 'title'/'enum') plus an optional 'required' list \u2014 an empty object is rejected. Example: {\"title\": \"Quick form\", \"properties\": {\"name\": {\"type\": \"string\", \"title\": \"Name\"}, \"priority\": {\"type\": \"string\", \"enum\": [\"low\", \"high\"]}}, \"required\": [\"name\"]}. May also be passed as a JSON-encoded string."
+        },
+        "filters": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/RecordFilter"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For TABLE resources, optional record filters using the datastore record API shape: {field, op, value}."
+        },
+        "query": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For TABLE resources, optional read-only SQL query for RLS-disabled tables. Use filters for normal table-scoped record display."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "DisplayResourceRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "app": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Displayed workspace app name when applicable."
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short-lived public URL for displayed workspace apps."
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO timestamp when the app access URL expires."
+        }
+      },
+      "title": "DisplayResourceResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "exec_command",
+    "toolset": "WORKSPACE_CLI",
+    "description": "Run a shell command in the private conversation workspace.\n\nUse this for repo inspection, builds, tests, and file edits through standard CLI commands.\nThe workspace injects Lemma environment variables for the current user/pod, so\n`lemma ...` CLI commands may be used for pod operations when the task calls for\nthem. Do not use raw localhost probes to diagnose host Lemma API/Auth\navailability: the command runs inside an isolated workspace, so `localhost` is\nthe workspace container, not the host backend.\nThe workspace is a sandbox: files created here are not directly visible to the\nuser. Upload final deliverables to pod files under `/me/...` with `lemma files\nupload` before presenting or referencing them as user-accessible files.\n\nModes:\n- One-shot (`tty=false`, default): returns after a short initial wait. Quick commands complete normally;\n  long-running commands return `process_id` instead of blocking the agent.\n- Interactive (`tty=true`): starts a real TTY terminal process and returns `process_id` for follow-up input.\n- Commands run in the workspace container directly; no sandbox/escalation fields are used here.\n\nInteractive workflow (for commands like `npm run dev`):\n1) Start with `tty=true`:\n   `{\"cmd\":\"npm run dev\",\"tty\":true,\"yield_time_ms\":1000}`\n2) Continue with `manage_process` using the returned `process_id`:\n   - poll output: `{\"action\":\"input\",\"process_id\":\"...\",\"chars\":\"\",\"yield_time_ms\":1000}`\n   - send input: `{\"action\":\"input\",\"process_id\":\"...\",\"chars\":\"q\\n\"}`\n   - stop it: `{\"action\":\"kill\",\"process_id\":\"...\"}`\n\nUse `manage_process` with `{\"action\":\"list\"}` before starting another\nlong-running server or when you need to find a process started earlier.\n\nEditing files via CLI example:\n- Overwrite file:\n  `{\"cmd\":\"cat > src/config.json <<'EOF'\\n{\\\"mode\\\":\\\"dev\\\"}\\nEOF\"}`\n- Append line:\n  `{\"cmd\":\"echo 'export DEBUG=1' >> .env.local\"}`",
+    "input_schema": {
+      "properties": {
+        "cmd": {
+          "description": "Exact shell command to execute. Include the full command string as you would run it in a terminal. This runs inside an isolated workspace; `localhost` is the workspace container, not the host Lemma app. Use the injected Lemma CLI environment for pod operations.",
+          "type": "string"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short, one-line goal statement for this tool call to show users what is being worked on."
+        },
+        "max_output_tokens": {
+          "default": 10000,
+          "description": "Maximum output tokens to return before truncating stdout/stderr for this call. Defaults to 10000.",
+          "type": "integer"
+        },
+        "tty": {
+          "default": false,
+          "description": "Set true to allocate an interactive terminal session. Required for commands that stay alive or wait for input (for example `npm run dev`, `python`, `bash`).",
+          "type": "boolean"
+        },
+        "workdir": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Working directory for the command. Relative paths are resolved inside the workspace."
+        },
+        "yield_time_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How long to wait for output before returning, in milliseconds. Lower values stream progress faster; higher values batch more output."
+        },
+        "timeout_seconds": {
+          "anyOf": [
+            {
+              "maximum": 300,
+              "minimum": 10,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set a blocking timeout in seconds instead of the default 30-second yield window. When set, the command blocks until completion or the timeout expires \u2014 `completed: true` is always returned (no `process_id`). Use for commands expected to take longer than 30 s, e.g. large data fetches. Omit to use the default 30-second yield behavior."
+        }
+      },
+      "required": [
+        "cmd"
+      ],
+      "title": "ExecCommandRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "stdout": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Captured standard output from the command or interactive session."
+        },
+        "stderr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Captured standard error from the command or interactive session."
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Process exit code when the command has completed."
+        },
+        "completed": {
+          "default": true,
+          "description": "Whether the process has finished. Interactive TTY sessions usually return `false` until exited.",
+          "type": "boolean"
+        },
+        "process_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Process ID to reuse with `write_stdin` for follow-up interaction when this interactive process is still running."
+        }
+      },
+      "title": "ExecCommandResult",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "execute_python",
+    "toolset": "WORKSPACE_CLI",
+    "description": "Execute Python code in the shared conversation-scoped IPython kernel.\n\nUse this for structured data analysis, transformations, parsing, and calculations\nthat are awkward in pure shell commands. Put the entire code snippet in\n`request.code`. The kernel state persists across calls in the same conversation session.\nVariables, imports, and in-memory objects from earlier executions remain available\nfor later executions, so use it for stepwise analysis when helpful.\nInclude a short `request.comment` to show the user-facing intent.",
+    "input_schema": {
+      "properties": {
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short, one-line goal statement for this tool call to show users what is being worked on."
+        },
+        "code": {
+          "description": "Python code to execute in the shared task kernel. The final expression value is returned separately when available.",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "description": "Maximum execution time in seconds before timing out.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "ExecutePythonRequest",
+      "type": "object"
+    },
+    "output_schema": {}
+  },
+  {
+    "tool_name": "final_answer",
+    "toolset": "FINAL_ANSWER",
+    "description": "Return normalized final agent data for adapter-side handling.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "COMPLETED",
+            "FAILED",
+            "WAITING"
+          ],
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "status",
+        "output"
+      ],
+      "type": "object"
+    },
+    "output_schema": {
+      "description": "Structured final agent result returned by the output tool.",
+      "properties": {
+        "status": {
+          "enum": [
+            "COMPLETED",
+            "FAILED",
+            "WAITING"
+          ],
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "FinalAgentResult",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "get_operation_details_tool",
+    "toolset": "INTEGRATIONS",
+    "description": "Fetch detailed input and output schemas for one or more operations.",
+    "input_schema": {
+      "properties": {
+        "application_id": {
+          "type": "string"
+        },
+        "operation_names": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "application_id"
+      ],
+      "title": "_OperationDetailsToolRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "OperationDetail": {
+          "description": "Full operation metadata including input and output schemas.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "input_schema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "output_schema": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "name",
+            "input_schema"
+          ],
+          "title": "OperationDetail",
+          "type": "object"
+        }
+      },
+      "description": "Batch response containing full metadata for multiple operations.",
+      "properties": {
+        "application_id": {
+          "description": "Application identifier.",
+          "type": "string"
+        },
+        "items": {
+          "description": "Operation details for the requested operations.",
+          "items": {
+            "$ref": "#/$defs/OperationDetail"
+          },
+          "type": "array"
+        },
+        "returned_count": {
+          "description": "Number of operation details returned in this response.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "application_id",
+        "items",
+        "returned_count"
+      ],
+      "title": "OperationDetailsBatchResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "interact_subagent",
+    "toolset": "SUBAGENTS",
+    "description": "Drive a running sub-agent you spawned.\n\naction='send'  \u2192 post a follow-up message (starts a new turn); needs content.\naction='await' \u2192 block until a run finishes (bounded by timeout_seconds); needs run_id.\naction='stop'  \u2192 request a graceful stop.",
+    "input_schema": {
+      "description": "Drive a running sub-agent you spawned.",
+      "properties": {
+        "conversation_id": {
+          "description": "Sub-conversation id from spawn.",
+          "type": "string"
+        },
+        "action": {
+          "description": "'send' a follow-up message (starts a new turn), 'await' a run to finish, or 'stop' a running sub-agent.",
+          "enum": [
+            "send",
+            "await",
+            "stop"
+          ],
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Message to send. Required when action='send'."
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Run id from spawn. Required when action='await'."
+        },
+        "timeout_seconds": {
+          "default": 30.0,
+          "description": "Max seconds to block when action='await' before returning a still-running handle. Keep this small and poll again with query_subagents(mode='messages') for long-running children rather than blocking the parent run.",
+          "maximum": 120.0,
+          "minimum": 1.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "action"
+      ],
+      "title": "InteractSubagentRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "list_skills",
+    "toolset": "SKILLS",
+    "description": "List the skills currently available from the workspace `skills/` directory.\n\nCall this first when you need to discover which skills exist before loading one.\nThe request object is intentionally empty; pass `{}`.",
+    "input_schema": {
+      "description": "Empty request model for listing workspace skills.",
+      "properties": {},
+      "title": "ListSkillsRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "SkillSummary": {
+          "properties": {
+            "name": {
+              "description": "Unique skill name.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Short description of what the skill does.",
+              "type": "string"
+            },
+            "path": {
+              "description": "Backing path to the skill's `SKILL.md` file. Pod skills use `/skills/...` paths.",
+              "type": "string"
+            },
+            "workspace_path": {
+              "description": "Workspace-visible absolute path to the skill's `SKILL.md` file.",
+              "type": "string"
+            },
+            "workspace_dir": {
+              "description": "Workspace-visible absolute path to the root directory for this skill.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "description",
+            "path",
+            "workspace_path",
+            "workspace_dir"
+          ],
+          "title": "SkillSummary",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "skills": {
+          "description": "Available workspace skills.",
+          "items": {
+            "$ref": "#/$defs/SkillSummary"
+          },
+          "type": "array"
+        }
+      },
+      "title": "SkillListResult",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "listen",
+    "toolset": "SPEECH",
+    "description": "Transcribe a user's voice message or audio file to text (speech-to-text).\n\nUSE WHEN the user sends a voice note / audio file and you need its words.\nThe file_path may point at the pod datastore (e.g. an auto-ingested voice\nnote at /me/telegram/voice.ogg) or the workspace sandbox. Common formats\n(OGG/Opus, MP3, M4A/AAC, WAV, FLAC, WebM) are supported directly.\n\nReturns the transcript plus optional detected_language/duration.",
+    "input_schema": {
+      "description": "Transcribe a pod/workspace audio file to text.",
+      "properties": {
+        "file_path": {
+          "description": "Path to the audio file to transcribe. Accepts a pod datastore path (e.g. /me/telegram/voice.ogg) or a workspace path.",
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional BCP-47 language hint (e.g. 'en'). None = auto-detect."
+        }
+      },
+      "required": [
+        "file_path"
+      ],
+      "title": "ListenRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "properties": {
+        "success": {
+          "default": false,
+          "type": "boolean"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transcript": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The transcribed text."
+        },
+        "detected_language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ListenResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "load_skill",
+    "toolset": "SKILLS",
+    "description": "Load a skill's `SKILL.md`, or a single resource file from inside the skill.\n\nCall this after `list_skills`. Two modes on one tool:\n- Omit `resource_path` \u2192 returns the full `SKILL.md` content **and** the list of\n  the skill's extra resource files (their relative `path`s under `resources`).\n- Pass a `resource_path` from that list \u2192 returns that resource's content.\n\nAlways pass the skill name in `request.name`.",
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Skill name to load, for example `skill-creator`.",
+          "type": "string"
+        },
+        "resource_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional relative path to a file inside the skill directory. Omit to load `SKILL.md` (the response also lists the skill's resource paths); pass a path from that list to load that resource instead. Must not be absolute."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SkillLookupRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "SkillResourceSummary": {
+          "properties": {
+            "path": {
+              "description": "Relative path to the resource inside the skill directory.",
+              "type": "string"
+            },
+            "workspace_path": {
+              "description": "Workspace-visible absolute path to the resource file.",
+              "type": "string"
+            },
+            "kind": {
+              "description": "High-level resource type such as `text`, `script`, or `file`.",
+              "type": "string"
+            },
+            "executable": {
+              "description": "String flag returned by the loader indicating whether the resource is executable.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "workspace_path",
+            "kind",
+            "executable"
+          ],
+          "title": "SkillResourceSummary",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Skill name that was loaded."
+        },
+        "resource_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Relative resource path when the loaded content is a resource, not `SKILL.md`."
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text content loaded from the requested skill file."
+        },
+        "resources": {
+          "description": "Extra files inside the skill directory (populated when loading `SKILL.md`). Pass a resource's `path` back as `resource_path` to load it.",
+          "items": {
+            "$ref": "#/$defs/SkillResourceSummary"
+          },
+          "type": "array"
+        }
+      },
+      "title": "SkillContentResult",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "manage_process",
+    "toolset": "WORKSPACE_CLI",
+    "description": "Drive a process started by `exec_command` (interactive or long-running).\n\nOne tool, three actions:\n- `action=\"input\"` \u2014 send characters to (or just poll output from) a running\n  process. Needs `process_id`. Poll logs with `chars=\"\"`; respond to a prompt\n  with `chars=\"y\\n\"`; run another command in the same shell with\n  `chars=\"npm test\\n\"`.\n- `action=\"kill\"` \u2014 stop a process by `process_id` (servers, REPLs, watchers,\n  or anything started accidentally).\n- `action=\"list\"` \u2014 list tracked shell processes in this workspace (find dev\n  servers/REPLs before polling, stopping, or starting another).",
+    "input_schema": {
+      "description": "Drive a process started by `exec_command` (interactive or long-running).",
+      "properties": {
+        "action": {
+          "description": "'input' = send chars to (or poll output from) a running process; 'kill' = stop a process; 'list' = list tracked processes.",
+          "enum": [
+            "input",
+            "kill",
+            "list"
+          ],
+          "type": "string"
+        },
+        "process_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Process ID from `exec_command`. Required for 'input' and 'kill'."
+        },
+        "chars": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For action=\"input\": characters to send to stdin. Use `\"\"` to poll output without sending input. Include `\\n` to press Enter."
+        },
+        "max_output_tokens": {
+          "default": 10000,
+          "description": "For action=\"input\": max output tokens to return. Defaults to 10000.",
+          "type": "integer"
+        },
+        "yield_time_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For action=\"input\": how long to wait for new output, in ms."
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short, one-line goal statement for this tool call to show users what is being worked on."
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "ManageProcessRequest",
+      "type": "object"
+    },
+    "output_schema": {}
+  },
+  {
+    "tool_name": "pod_get_file_url",
+    "toolset": "POD",
+    "description": "Get a URL for a pod file, to hand a user a link or embed an image.\n\n``url_type=\"app\"`` (default) returns an authenticated in-app link\n(``app_url``) for a signed-in pod member, plus a short-lived direct-download\n``url``. ``url_type=\"public\"`` mints a public, hit-capped ``signed_url``\nanyone can open without logging in (e.g. to email/message a file to someone\noutside the pod) \u2014 it expires and stops after ``max_hits`` downloads, so a\nleaked link can't run up egress.",
+    "input_schema": {
+      "properties": {
+        "path": {
+          "description": "Absolute pod file path.",
+          "type": "string"
+        },
+        "url_type": {
+          "default": "app",
+          "description": "'app' = authenticated in-app link for a signed-in pod member (returns app_url + a short-lived download url). 'public' = a public, hit-capped signed link anyone can open without logging in (returns signed_url) \u2014 use to email/message a file to someone outside the pod.",
+          "enum": [
+            "app",
+            "public"
+          ],
+          "type": "string"
+        },
+        "expires_seconds": {
+          "anyOf": [
+            {
+              "maximum": 86400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Link lifetime in seconds. 'app': lifetime of the download url (default ~1 hour). 'public': lifetime of the signed link (default 3 hours, max 24 hours)."
+        },
+        "max_hits": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "'public' links only: maximum downloads before the link stops working (default 50, max 100). Bounds egress if the link leaks. Ignored for 'app'."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "GetFileUrlRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_get_records",
+    "toolset": "POD",
+    "description": "Read records from a pod table.\n\nPass ``record_id`` to fetch a single record; omit it to list records with\noptional ``filters`` and ``sorts``.",
+    "input_schema": {
+      "$defs": {
+        "RecordFilter": {
+          "properties": {
+            "column": {
+              "type": "string"
+            },
+            "op": {
+              "default": "eq",
+              "description": "eq, ne, gt, gte, lt, lte, like, in.",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "column"
+          ],
+          "title": "RecordFilter",
+          "type": "object"
+        },
+        "RecordSort": {
+          "properties": {
+            "column": {
+              "type": "string"
+            },
+            "direction": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "column"
+          ],
+          "title": "RecordSort",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "table_name": {
+          "type": "string"
+        },
+        "record_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fetch a single record by id; omit to list with filters/sorts."
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "filters": {
+          "items": {
+            "$ref": "#/$defs/RecordFilter"
+          },
+          "type": "array"
+        },
+        "sorts": {
+          "items": {
+            "$ref": "#/$defs/RecordSort"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "table_name"
+      ],
+      "title": "PodGetRecordsRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_list_files",
+    "toolset": "POD",
+    "description": "List pod files under a path.\n\n``recursive=false`` (default) lists the immediate files and folders in\n``path``. ``recursive=true`` returns a file tree rooted at ``path`` (folders\nplus a sample of files per directory).",
+    "input_schema": {
+      "properties": {
+        "path": {
+          "default": "/",
+          "description": "Folder path, e.g. /pod or /me.",
+          "type": "string"
+        },
+        "recursive": {
+          "default": false,
+          "description": "False (default) = immediate files/folders in `path`. True = a file tree rooted at `path` (folders + sample files per directory).",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 100,
+          "description": "Max entries when not recursive.",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "files_per_directory": {
+          "default": 20,
+          "description": "Sample files per directory when recursive.",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "title": "PodListFilesRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_query",
+    "toolset": "POD",
+    "description": "Run a read-only SQL query against the pod.\n\nReads across tables (joins, aggregates, subqueries) including RLS-enabled\ntables; rows of an RLS table are always scoped to the agent's user (the same\nper-user view its other record reads get). Only a single read-only SELECT is\nallowed.",
+    "input_schema": {
+      "properties": {
+        "sql": {
+          "description": "A single read-only SELECT over the pod's tables. Joins/aggregates across tables are allowed, including RLS tables (rows scoped to you unless you administer the table). Mutations are rejected.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sql"
+      ],
+      "title": "QueryRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_read_file",
+    "toolset": "POD",
+    "description": "Read a pod file's content as text or as converted document markdown.\n\n- ``format=\"text\"`` (default) \u2014 the file's raw UTF-8 text, truncated to\n  ``max_chars``.\n- ``format=\"markdown\"`` \u2014 converted markdown for a document (PDF, DOCX, ...),\n  optionally a 1-based page range (``page_start``/``page_end``).\n\nTo SEE pages visually (layout, tables, figures), use ``pod_view_document_pages``.",
+    "input_schema": {
+      "properties": {
+        "path": {
+          "description": "Absolute pod file path, e.g. /pod/notes.txt.",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "description": "'text' = raw file text. 'markdown' = converted document text (PDF, DOCX, ...); supports a page range. To SEE pages as images instead, use pod_view_document_pages.",
+          "enum": [
+            "text",
+            "markdown"
+          ],
+          "type": "string"
+        },
+        "page_start": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "markdown only: first page (1-based). Omit for the whole document."
+        },
+        "page_end": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "markdown only: last page (1-based, inclusive). Defaults to page_start."
+        },
+        "max_chars": {
+          "default": 50000,
+          "maximum": 400000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "PodReadFileRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_search_files",
+    "toolset": "POD",
+    "description": "Semantic/keyword search across indexed pod files.",
+    "input_schema": {
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "method": {
+          "default": "HYBRID",
+          "enum": [
+            "VECTOR",
+            "TEXT",
+            "HYBRID"
+          ],
+          "type": "string"
+        },
+        "scope_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict search to this folder subtree."
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "SearchFilesRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_tables",
+    "toolset": "POD",
+    "description": "List the pod's tables with their column schemas, or describe one table.\n\nOmit ``table_name`` to list every table (each with columns, types, PK, RLS\nflag). Pass ``table_name`` to describe just that one.",
+    "input_schema": {
+      "properties": {
+        "table_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Omit to list all tables with their column schemas; pass a name to describe just that table."
+        },
+        "limit": {
+          "default": 100,
+          "description": "Max tables when listing.",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "title": "PodTablesRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "pod_view_document_pages",
+    "toolset": "POD",
+    "description": "Render PDF pages as images so you can *see* them (layout, tables, figures).\n\nPages are 1-based. Only PDFs can be rendered visually; for other document\ntypes use ``pod_read_file`` with ``format=\"markdown\"`` to read the page text.\nYou receive the page images inline; the transcript keeps only short-lived URLs.",
+    "input_schema": {
+      "properties": {
+        "path": {
+          "description": "Path of a PDF document in the pod.",
+          "type": "string"
+        },
+        "page_start": {
+          "description": "First page (1-based) to render as an image.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page_end": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last page (1-based, inclusive). Defaults to page_start."
+        }
+      },
+      "required": [
+        "path",
+        "page_start"
+      ],
+      "title": "ViewDocumentPagesRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AudioUrl": {
+          "description": "A URL to an audio file.",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "force_download": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "const": "allow-local",
+                  "type": "string"
+                }
+              ],
+              "default": false
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "audio-url",
+              "default": "audio-url",
+              "type": "string"
+            },
+            "media_type": {
+              "description": "Return the media type of the file, based on the URL or the provided `media_type`.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "identifier": {
+              "description": "The identifier of the file, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `FileUrl`.\n\nThis identifier is only automatically passed to the model when the `FileUrl` is returned by a tool.\nIf you're passing the `FileUrl` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `FileUrl`.\n\nIt's also included in inline-text delimiters for providers that require inlining text documents, so the model can\ndistinguish multiple files.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "media_type",
+            "identifier"
+          ],
+          "title": "AudioUrl",
+          "type": "object"
+        },
+        "BinaryContent": {
+          "description": "Binary content, e.g. an audio or image file.",
+          "properties": {
+            "data": {
+              "format": "base64url",
+              "type": "string"
+            },
+            "media_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "audio/wav",
+                    "audio/mpeg",
+                    "audio/ogg",
+                    "audio/flac",
+                    "audio/aiff",
+                    "audio/aac"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/gif",
+                    "image/webp"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "enum": [
+                    "application/pdf",
+                    "text/plain",
+                    "text/csv",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "text/html",
+                    "text/markdown",
+                    "application/msword",
+                    "application/vnd.ms-excel"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "binary",
+              "default": "binary",
+              "type": "string"
+            },
+            "identifier": {
+              "description": "Identifier for the binary content, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `BinaryContent`.\n\nThis identifier is only automatically passed to the model when the `BinaryContent` is returned by a tool.\nIf you're passing the `BinaryContent` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `BinaryContent`.\n\nIt's also included in inline-text delimiters for providers that require inlining text documents, so the model can\ndistinguish multiple files.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "data",
+            "media_type",
+            "identifier"
+          ],
+          "title": "BinaryContent",
+          "type": "object"
+        },
+        "CachePoint": {
+          "description": "A cache point marker for prompt caching.\n\nCan be inserted into UserPromptPart.content to mark cache boundaries.\nModels that don't support caching will filter these out.\n\nSupported by:\n\n- Anthropic\n- Amazon Bedrock (Converse API)\n- OpenRouter (Anthropic and Gemini models)",
+          "properties": {
+            "kind": {
+              "const": "cache-point",
+              "default": "cache-point",
+              "type": "string"
+            },
+            "ttl": {
+              "default": "5m",
+              "enum": [
+                "5m",
+                "1h"
+              ],
+              "type": "string"
+            }
+          },
+          "title": "CachePoint",
+          "type": "object"
+        },
+        "DocumentUrl": {
+          "description": "The URL of the document.",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "force_download": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "const": "allow-local",
+                  "type": "string"
+                }
+              ],
+              "default": false
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "document-url",
+              "default": "document-url",
+              "type": "string"
+            },
+            "media_type": {
+              "description": "Return the media type of the file, based on the URL or the provided `media_type`.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "identifier": {
+              "description": "The identifier of the file, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `FileUrl`.\n\nThis identifier is only automatically passed to the model when the `FileUrl` is returned by a tool.\nIf you're passing the `FileUrl` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `FileUrl`.\n\nIt's also included in inline-text delimiters for providers that require inlining text documents, so the model can\ndistinguish multiple files.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "media_type",
+            "identifier"
+          ],
+          "title": "DocumentUrl",
+          "type": "object"
+        },
+        "ImageUrl": {
+          "description": "A URL to an image.",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "force_download": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "const": "allow-local",
+                  "type": "string"
+                }
+              ],
+              "default": false
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "image-url",
+              "default": "image-url",
+              "type": "string"
+            },
+            "media_type": {
+              "description": "Return the media type of the file, based on the URL or the provided `media_type`.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "identifier": {
+              "description": "The identifier of the file, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `FileUrl`.\n\nThis identifier is only automatically passed to the model when the `FileUrl` is returned by a tool.\nIf you're passing the `FileUrl` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `FileUrl`.\n\nIt's also included in inline-text delimiters for providers that require inlining text documents, so the model can\ndistinguish multiple files.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "media_type",
+            "identifier"
+          ],
+          "title": "ImageUrl",
+          "type": "object"
+        },
+        "TextContent": {
+          "description": "String content that is tagged with additional metadata.\n\nThis is useful for including metadata that can be accessed programmatically by the application, but is not sent to the LLM.",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "metadata": {
+              "default": null
+            },
+            "kind": {
+              "const": "text-content",
+              "default": "text-content",
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "title": "TextContent",
+          "type": "object"
+        },
+        "ToolReturn": {
+          "description": "A structured tool return that separates the tool result from additional content sent to the model.\n\nCan be parameterized with a type to enable return schema generation:\n- `ToolReturn[User]` \u2014 generates a return schema for `User`\n- `ToolReturn` (bare) \u2014 no return schema generated",
+          "properties": {
+            "return_value": {
+              "$ref": "#/$defs/ToolReturnContent"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "$ref": "#/$defs/TextContent"
+                      },
+                      {
+                        "discriminator": {
+                          "mapping": {
+                            "audio-url": "#/$defs/AudioUrl",
+                            "binary": "#/$defs/BinaryContent",
+                            "document-url": "#/$defs/DocumentUrl",
+                            "image-url": "#/$defs/ImageUrl",
+                            "uploaded-file": "#/$defs/UploadedFile",
+                            "video-url": "#/$defs/VideoUrl"
+                          },
+                          "propertyName": "kind"
+                        },
+                        "oneOf": [
+                          {
+                            "$ref": "#/$defs/ImageUrl"
+                          },
+                          {
+                            "$ref": "#/$defs/AudioUrl"
+                          },
+                          {
+                            "$ref": "#/$defs/DocumentUrl"
+                          },
+                          {
+                            "$ref": "#/$defs/VideoUrl"
+                          },
+                          {
+                            "$ref": "#/$defs/BinaryContent"
+                          },
+                          {
+                            "$ref": "#/$defs/UploadedFile"
+                          }
+                        ]
+                      },
+                      {
+                        "$ref": "#/$defs/CachePoint"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "metadata": {
+              "default": null
+            },
+            "kind": {
+              "const": "tool-return",
+              "default": "tool-return",
+              "type": "string"
+            }
+          },
+          "required": [
+            "return_value"
+          ],
+          "title": "ToolReturn",
+          "type": "object"
+        },
+        "ToolReturnContent": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "audio-url": "#/$defs/AudioUrl",
+                  "binary": "#/$defs/BinaryContent",
+                  "document-url": "#/$defs/DocumentUrl",
+                  "image-url": "#/$defs/ImageUrl",
+                  "uploaded-file": "#/$defs/UploadedFile",
+                  "video-url": "#/$defs/VideoUrl"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ImageUrl"
+                },
+                {
+                  "$ref": "#/$defs/AudioUrl"
+                },
+                {
+                  "$ref": "#/$defs/DocumentUrl"
+                },
+                {
+                  "$ref": "#/$defs/VideoUrl"
+                },
+                {
+                  "$ref": "#/$defs/BinaryContent"
+                },
+                {
+                  "$ref": "#/$defs/UploadedFile"
+                }
+              ]
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/ToolReturnContent"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/ToolReturnContent"
+              },
+              "type": "object"
+            },
+            {}
+          ]
+        },
+        "UploadedFile": {
+          "description": "A reference to a file uploaded to a provider's file storage by ID.\n\nThis allows referencing files that have been uploaded via provider-specific file APIs\nrather than providing the file content directly.\n\nSupported by:\n\n- [`AnthropicModel`][pydantic_ai.models.anthropic.AnthropicModel]\n- [`OpenAIChatModel`][pydantic_ai.models.openai.OpenAIChatModel]\n- [`OpenAIResponsesModel`][pydantic_ai.models.openai.OpenAIResponsesModel]\n- [`BedrockConverseModel`][pydantic_ai.models.bedrock.BedrockConverseModel]\n- [`GoogleModel`][pydantic_ai.models.google.GoogleModel] (Gemini API: [Files API](https://ai.google.dev/gemini-api/docs/files) URIs, Google Cloud: GCS `gs://` URIs)\n- [`XaiModel`][pydantic_ai.models.xai.XaiModel]",
+          "properties": {
+            "file_id": {
+              "type": "string"
+            },
+            "provider_name": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google",
+                "google-cloud",
+                "google-gla",
+                "google-vertex",
+                "bedrock",
+                "xai"
+              ],
+              "type": "string"
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "uploaded-file",
+              "default": "uploaded-file",
+              "type": "string"
+            },
+            "media_type": {
+              "description": "Return the media type of the file, inferred from `file_id` if not explicitly provided.\n\nNote: Inference relies on the file extension in `file_id`.\nFor opaque file IDs (e.g., `'file-abc123'`), the media type will default to `'application/octet-stream'`.\nInference relies on Python's `mimetypes` module, whose results may vary across platforms.\n\nRequired by some providers (e.g., Bedrock) for certain file types.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "identifier": {
+              "description": "The identifier of the file, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `UploadedFile`.\n\nThis identifier is only automatically passed to the model when the `UploadedFile` is returned by a tool.\nIf you're passing the `UploadedFile` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `UploadedFile`.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_id",
+            "provider_name",
+            "media_type",
+            "identifier"
+          ],
+          "title": "UploadedFile",
+          "type": "object"
+        },
+        "VideoUrl": {
+          "description": "A URL to a video.",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "force_download": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "const": "allow-local",
+                  "type": "string"
+                }
+              ],
+              "default": false
+            },
+            "vendor_metadata": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "kind": {
+              "const": "video-url",
+              "default": "video-url",
+              "type": "string"
+            },
+            "media_type": {
+              "description": "Return the media type of the file, based on the URL or the provided `media_type`.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "identifier": {
+              "description": "The identifier of the file, such as a unique ID.\n\nThis identifier can be provided to the model in a message to allow it to refer to this file in a tool call argument,\nand the tool can look up the file in question by iterating over the message history and finding the matching `FileUrl`.\n\nThis identifier is only automatically passed to the model when the `FileUrl` is returned by a tool.\nIf you're passing the `FileUrl` as a user message, it's up to you to include a separate text part with the identifier,\ne.g. \"This is file <identifier>:\" preceding the `FileUrl`.\n\nIt's also included in inline-text delimiters for providers that require inlining text documents, so the model can\ndistinguish multiple files.",
+              "readOnly": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "media_type",
+            "identifier"
+          ],
+          "title": "VideoUrl",
+          "type": "object"
+        }
+      },
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ToolReturn"
+        }
+      ]
+    }
+  },
+  {
+    "tool_name": "pod_write_record",
+    "toolset": "POD",
+    "description": "Create, update, or delete a record in a pod table (requires record.write grant).\n\n- ``action=\"create\"`` \u2014 needs ``data`` (column -> value).\n- ``action=\"update\"`` \u2014 needs ``record_id`` and ``data``.\n- ``action=\"delete\"`` \u2014 needs ``record_id``.",
+    "input_schema": {
+      "properties": {
+        "action": {
+          "description": "'create' a new record, 'update' an existing one, or 'delete' one.",
+          "enum": [
+            "create",
+            "update",
+            "delete"
+          ],
+          "type": "string"
+        },
+        "table_name": {
+          "type": "string"
+        },
+        "record_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target record id. Required for 'update' and 'delete'."
+        },
+        "data": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "An object mapping column name -> value, e.g. {\"title\": \"Q3 report\", \"amount\": 42, \"tags\": [\"a\", \"b\"]}. Values may be scalars, nested objects, or arrays. REQUIRED and must be non-empty for 'create' and 'update' \u2014 an empty object writes nothing and is rejected."
+        }
+      },
+      "required": [
+        "action",
+        "table_name"
+      ],
+      "title": "PodWriteRecordRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "query_subagents",
+    "toolset": "SUBAGENTS",
+    "description": "Inspect the sub-agents you spawned.\n\nmode='list'     \u2192 child conversations with latest run status (status='ACTIVE'\n                  filters to running ones).\nmode='messages' \u2192 latest messages from one child; needs conversation_id.",
+    "input_schema": {
+      "description": "Inspect the sub-agents you spawned.",
+      "properties": {
+        "mode": {
+          "description": "'list' the children you spawned (with latest run status), or read the latest 'messages' from one child conversation.",
+          "enum": [
+            "list",
+            "messages"
+          ],
+          "type": "string"
+        },
+        "conversation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sub-conversation id. Required when mode='messages'."
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "mode='list' filter: 'ACTIVE' for only running children."
+        },
+        "after_sequence": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "mode='messages': only return messages after this sequence."
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "QuerySubagentsRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "request_approval",
+    "toolset": "USER_INTERACTION",
+    "description": "Ask the user to approve running a tool you lack permission for, then run it.\n\nThis is a higher-order gate for sensitive or ungranted actions. When one of\nyour tool/CLI/python calls fails with a permission error (403), or you know\nan action needs the user's authority (deleting data, sending email, running\na privileged command), call this tool with the FULL action you want\nperformed. State everything needed to run it \u2014 do not rely on prior context.\n\nThe run pauses and the client renders an approval card. If the user approves,\nthe backend executes the named tool with the *user's* authority (for CLI and\npython, in a fresh workspace session minted with the user's token in the same\nworking directory; for other tools, under the user's permissions) and returns\nthe tool's result here. If the user denies, nothing runs.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_name": {
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "title": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "tool_name",
+        "args",
+        "title"
+      ],
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AgentRunApprovalDecision": {
+          "description": "User decision scope for a run approval.",
+          "enum": [
+            "APPROVE_ONCE",
+            "APPROVE_FOR_SESSION",
+            "DENY"
+          ],
+          "title": "AgentRunApprovalDecision",
+          "type": "string"
+        }
+      },
+      "description": "Result of a higher-order ``request_approval`` call.\n\nCarries both the user's decision and, when approved, the result of running\nthe wrapped tool with the user's authority.",
+      "properties": {
+        "success": {
+          "default": false,
+          "description": "Whether the tool completed successfully.",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable error details when the tool fails."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable status or follow-up information for the tool call."
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentRunApprovalDecision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The user's decision: APPROVE_ONCE, APPROVE_FOR_SESSION, or DENY."
+        },
+        "executed": {
+          "default": false,
+          "description": "Whether the wrapped tool was executed (true only when approved).",
+          "type": "boolean"
+        },
+        "result": {
+          "default": null,
+          "description": "The wrapped tool's result when executed as the user."
+        },
+        "response": {
+          "additionalProperties": true,
+          "description": "Optional structured response submitted with the decision.",
+          "type": "object"
+        }
+      },
+      "title": "RequestApprovalResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "say",
+    "toolset": "SPEECH",
+    "description": "Generate spoken audio (MP3) from text and save it to the pod datastore.\n\nUSE WHEN you want to reply to the user with voice. Returns the pod file path\nof the generated audio. To actually send it, call display_resource\n(type=FILE, path=<audio_file_path>) \u2014 do NOT assume it is auto-sent.",
+    "input_schema": {
+      "description": "Generate spoken audio (MP3) from text.",
+      "properties": {
+        "text": {
+          "description": "The text to speak.",
+          "type": "string"
+        },
+        "output_file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional pod datastore path for the generated .mp3 (e.g. /me/speech/reply.mp3). Defaults to a generated /me/speech/<id>.mp3."
+        },
+        "voice": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional provider-specific voice/model id. None = default."
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "SayRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "properties": {
+        "success": {
+          "default": false,
+          "type": "boolean"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "audio_file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pod datastore path of the generated audio file."
+        }
+      },
+      "title": "SayResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "search_operations_tool",
+    "toolset": "INTEGRATIONS",
+    "description": "Search operations for one application using only name and description.",
+    "input_schema": {
+      "properties": {
+        "application_id": {
+          "type": "string"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "application_id"
+      ],
+      "title": "_OperationSearchToolRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "OperationSummary": {
+          "description": "Compact operation metadata for discovery flows.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "relevance_score": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Relative relevance for the discovery query, from 0 to 1."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "title": "OperationSummary",
+          "type": "object"
+        }
+      },
+      "description": "Structured result for operation discovery within one application.",
+      "properties": {
+        "application_id": {
+          "description": "Application identifier.",
+          "type": "string"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional discovery query used to rank or filter operations."
+        },
+        "items": {
+          "description": "Matching operations with compact descriptions.",
+          "items": {
+            "$ref": "#/$defs/OperationSummary"
+          },
+          "type": "array"
+        },
+        "total_operations": {
+          "description": "Total operations available for the application.",
+          "type": "integer"
+        },
+        "returned_count": {
+          "description": "Number of operations returned in this response.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "application_id",
+        "items",
+        "total_operations",
+        "returned_count"
+      ],
+      "title": "OperationDiscoverResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "spawn_subagent",
+    "toolset": "SUBAGENTS",
+    "description": "Start a pod agent as a linked child conversation; returns a handle.\n\nOmit agent_name to spawn another instance of yourself for a targeted subtask.\nNon-blocking: returns {conversation_id, run_id, status}. Use interact_subagent\n(action='await') to wait, or query_subagents (mode='messages') to poll.",
+    "input_schema": {
+      "properties": {
+        "agent_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of a pod agent you may execute. Omit (or pass your own name) to spawn another instance of yourself for a targeted subtask."
+        },
+        "input": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Task for the sub-agent as its first message: a plain instruction string (most common), or a JSON object of structured inputs."
+        }
+      },
+      "title": "SpawnSubagentRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "view_image",
+    "toolset": "WORKSPACE_CLI",
+    "description": "Load an image file from the private workspace and return it as binary tool content.\n\nUse this for screenshots, generated images, charts, or any other visual artifact\nthat the agent should inspect.\n\nPATH HANDLING:\n- This tool reads only from the private current conversation workspace directory.\n- Always pass a relative path such as `images/output.png`.\n- Do not pass absolute paths or paths outside the current workspace directory.",
+    "input_schema": {
+      "properties": {
+        "pod_file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to an image file in the pod datastore, e.g. `/me/photo.jpg`. These are user-uploaded or ingested files; use `pod_list_files` or `pod_search_files` to discover exact paths. Set this OR `workspace_file_path`, not both."
+        },
+        "workspace_file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to an image file in the conversation workspace sandbox \u2014 a relative path such as `images/output.png` or one under `/workspace/`. Use for artifacts the agent just produced (screenshots, charts). Set this OR `pod_file_path`, not both."
+        }
+      },
+      "title": "ViewImageRequest",
+      "type": "object"
+    },
+    "output_schema": {}
+  },
+  {
+    "tool_name": "web_search",
+    "toolset": "WEB_SEARCH",
+    "description": "Performs web search and returns raw search results with snippets and URLs.\n\nUSAGE GUIDELINES:\n- Use for finding current information, news, and specific topics\n- Finding youtube videos, images or any assets online\n- Returns structured search results with titles, snippets, and URLs\n- Combine with save_url_as_file to archive interesting results\n- Use specific, targeted search queries for better results\n\nBEST PRACTICES:\n- Use specific keywords rather than questions\n- Include relevant terms like dates, locations, or technical terms\n\nEXAMPLES:\n- Technical search: \"Python async programming best practices 2025\"\n- News search: \"artificial intelligence regulations European Union\"\n- Research search: \"renewable energy storage solutions lithium alternatives\"",
+    "input_schema": {
+      "description": "Request model for standard web search",
+      "properties": {
+        "query": {
+          "description": "Search query string",
+          "type": "string"
+        },
+        "max_results": {
+          "default": 10,
+          "description": "Maximum number of search results to return",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "WebSearchRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "SearchResult": {
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "snippet": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "title",
+            "url",
+            "snippet",
+            "source"
+          ],
+          "title": "SearchResult",
+          "type": "object"
+        }
+      },
+      "description": "Response model for standard web search",
+      "properties": {
+        "success": {
+          "description": "Whether the search was successful",
+          "type": "boolean"
+        },
+        "results": {
+          "description": "List of search results",
+          "items": {
+            "$ref": "#/$defs/SearchResult"
+          },
+          "type": "array"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Status message"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Error message if the search was not successful"
+        }
+      },
+      "required": [
+        "success"
+      ],
+      "title": "WebSearchResponse",
+      "type": "object"
+    }
+  },
+  {
+    "tool_name": "write_todos",
+    "toolset": "TODO",
+    "description": "Add or update task-list items from markdown checklist lines.\n\nEach line is upserted by its text: a new line is appended, a line whose\ntext matches an existing task flips that task's done state. Send one line\nto flip one task, or the whole list at once. Returns the full task list.",
+    "input_schema": {
+      "properties": {
+        "todos": {
+          "description": "One markdown checklist line per task. Use '[ ]' for a task still to do and '[x]' once it's done (e.g. '- [ ] Fetch the Q3 report'); a line with no checkbox is treated as not-done. Send the whole list, or just the single line you want to flip \u2014 lines are matched to existing tasks by their text, so the rest of the list is preserved. The full, updated list is always returned.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "todos"
+      ],
+      "title": "WriteTodosRequest",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "type": "object"
+    }
+  }
+]

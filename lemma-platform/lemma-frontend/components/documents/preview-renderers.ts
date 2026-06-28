@@ -1,0 +1,246 @@
+export type DocumentPreviewType = 'markdown' | 'json' | 'html' | 'code' | 'image' | 'pdf' | 'office' | 'unsupported';
+
+export interface PdfPreviewData {
+    pages: string[];
+    totalPages: number;
+    truncated: boolean;
+}
+
+const MAX_PDF_PREVIEW_PAGES = 24;
+const PDF_RENDER_SCALE = 1.25;
+const CODE_FILE_EXTENSIONS = new Set([
+    'asc',
+    'asm',
+    'astro',
+    'bash',
+    'bat',
+    'c',
+    'cc',
+    'cfg',
+    'clj',
+    'cljs',
+    'cljc',
+    'cmd',
+    'cjs',
+    'conf',
+    'cpp',
+    'cts',
+    'cs',
+    'css',
+    'csv',
+    'cxx',
+    'dart',
+    'dockerignore',
+    'edn',
+    'env',
+    'erb',
+    'erl',
+    'ex',
+    'exs',
+    'fish',
+    'gemspec',
+    'go',
+    'gradle',
+    'graphql',
+    'gql',
+    'groovy',
+    'h',
+    'hh',
+    'hpp',
+    'hrl',
+    'hs',
+    'hxx',
+    'ini',
+    'java',
+    'jl',
+    'js',
+    'json5',
+    'jsonc',
+    'jsx',
+    'kt',
+    'kts',
+    'less',
+    'log',
+    'lua',
+    'm',
+    'make',
+    'mdx',
+    'mk',
+    'mm',
+    'mjs',
+    'mts',
+    'nim',
+    'php',
+    'pl',
+    'pm',
+    'properties',
+    'proto',
+    'ps1',
+    'psm1',
+    'py',
+    'r',
+    'rb',
+    'rego',
+    'rs',
+    'sass',
+    'scala',
+    'scss',
+    'sh',
+    'sol',
+    'sql',
+    'styl',
+    'svelte',
+    'swift',
+    'tcl',
+    'tf',
+    'tfvars',
+    'toml',
+    'ts',
+    'tsv',
+    'tsx',
+    'txt',
+    'vb',
+    'vue',
+    'xml',
+    'xsd',
+    'xsl',
+    'yaml',
+    'yml',
+    'zig',
+    'zsh',
+]);
+const CODE_FILE_BASENAMES = new Set([
+    '.bashrc',
+    '.editorconfig',
+    '.env',
+    '.envrc',
+    '.env.development',
+    '.env.local',
+    '.env.production',
+    '.env.test',
+    '.gitignore',
+    '.gitmodules',
+    '.npmrc',
+    '.prettierignore',
+    '.prettierrc',
+    '.prettierrc.json',
+    '.prettierrc.yaml',
+    '.prettierrc.yml',
+    '.zshrc',
+    'dockerfile',
+    'gemfile',
+    'justfile',
+    'makefile',
+    'procfile',
+    'readme',
+    'readme.md',
+]);
+const IMAGE_FILE_EXTENSIONS = new Set([
+    'apng',
+    'avif',
+    'bmp',
+    'gif',
+    'ico',
+    'jpeg',
+    'jpg',
+    'png',
+    'svg',
+    'webp',
+]);
+
+export type OfficePreviewKind = 'docx' | 'other';
+
+export interface DocxPreviewData {
+    html: string;
+    warnings: string[];
+}
+
+export function getDocumentPreviewType(filePath: string): DocumentPreviewType {
+    const lowerPath = filePath.toLowerCase();
+    const fileName = lowerPath.split('/').pop() || lowerPath;
+    const extensionIndex = fileName.lastIndexOf('.');
+    const extension = extensionIndex >= 0 ? fileName.slice(extensionIndex + 1) : '';
+
+    if (lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown')) return 'markdown';
+    if (lowerPath.endsWith('.json')) return 'json';
+    if (lowerPath.endsWith('.html') || lowerPath.endsWith('.htm')) return 'html';
+    if (lowerPath.endsWith('.pdf')) return 'pdf';
+    if (IMAGE_FILE_EXTENSIONS.has(extension)) return 'image';
+    if (
+        lowerPath.endsWith('.doc')
+        || lowerPath.endsWith('.docx')
+        || lowerPath.endsWith('.ppt')
+        || lowerPath.endsWith('.pptx')
+        || lowerPath.endsWith('.xls')
+        || lowerPath.endsWith('.xlsx')
+    ) return 'office';
+    if (CODE_FILE_BASENAMES.has(fileName)) return 'code';
+    if (CODE_FILE_EXTENSIONS.has(extension)) return 'code';
+
+    return 'unsupported';
+}
+
+export function getOfficePreviewKind(filePath: string): OfficePreviewKind {
+    const lowerPath = filePath.toLowerCase();
+    if (lowerPath.endsWith('.docx')) return 'docx';
+    return 'other';
+}
+
+export async function renderDocxPreview(blob: Blob): Promise<DocxPreviewData> {
+    const mammoth = await import('mammoth');
+    const arrayBuffer = await blob.arrayBuffer();
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    const warnings = Array.isArray(result.messages)
+        ? result.messages
+            .map((message) => (typeof message.message === 'string' ? message.message.trim() : ''))
+            .filter((message) => message.length > 0)
+        : [];
+
+    return {
+        html: result.value || '',
+        warnings,
+    };
+}
+
+export async function renderPdfPreview(blob: Blob): Promise<PdfPreviewData> {
+    const pdfjs = await import('pdfjs-dist');
+
+    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+            'pdfjs-dist/build/pdf.worker.min.mjs',
+            import.meta.url
+        ).toString();
+    }
+
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const loadingTask = pdfjs.getDocument({ data: bytes });
+    const pdf = await loadingTask.promise;
+
+    try {
+        const totalPages = pdf.numPages;
+        const targetPages = Math.min(totalPages, MAX_PDF_PREVIEW_PAGES);
+        const pages: string[] = [];
+
+        for (let pageIndex = 1; pageIndex <= targetPages; pageIndex += 1) {
+            const page = await pdf.getPage(pageIndex);
+            const viewport = page.getViewport({ scale: PDF_RENDER_SCALE });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            if (!context) continue;
+
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+
+            await page.render({ canvas, canvasContext: context, viewport }).promise;
+            pages.push(canvas.toDataURL('image/png'));
+        }
+
+        return {
+            pages,
+            totalPages,
+            truncated: totalPages > targetPages,
+        };
+    } finally {
+        await pdf.destroy();
+    }
+}

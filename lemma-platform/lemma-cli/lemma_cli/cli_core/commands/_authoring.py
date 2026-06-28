@@ -1,0 +1,52 @@
+"""Shared command bodies for the init-first authoring flow.
+
+`grant` (edit a bundle's permissions.grants) and `schema` (print a resource's
+JSONC shape) are identical across resource modules; the logic lives here so the
+per-resource commands stay thin 3-line wrappers and the output stays uniform.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import typer
+
+from ..state import console
+
+
+def grant_resource(
+    resource_type: str,
+    name: str,
+    specs: list[str],
+    *,
+    root: Path | None,
+    show: bool,
+) -> None:
+    """Add resource grants to an agent/function bundle JSON (zero access by default)."""
+    from ...cli_app.scaffold import ScaffoldError, grant_in_bundle, parse_grant_spec
+
+    try:
+        if show:
+            grants = [parse_grant_spec(spec) for spec in specs]
+            console.print_json(json.dumps({"permissions": {"grants": grants}}))
+            return
+        path, perms = grant_in_bundle(resource_type, name, specs, root=root)
+    except ScaffoldError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(f"[green]grant[/green] {resource_type} [bold]{name}[/bold] -> {path}")
+    for grant in perms["grants"]:
+        console.print(
+            f"  {grant['resource_type']} {grant['resource_name']}: {', '.join(grant['permission_ids'])}"
+        )
+    console.print("[dim]next:[/dim] `lemma pods import .` to apply")
+
+
+def print_resource_schema(resource_type: str) -> None:
+    """Print the JSONC scaffold/example for a resource type (same shape `init` writes)."""
+    from ...cli_app.scaffold import ScaffoldError, resource_example
+
+    try:
+        typer.echo(resource_example(resource_type))
+    except ScaffoldError as exc:
+        raise typer.BadParameter(str(exc)) from exc

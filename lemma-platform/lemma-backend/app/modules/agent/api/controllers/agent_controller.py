@@ -1,0 +1,330 @@
+"""Pod agent definition routes."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, Query, status
+
+from app.core.api.dependencies import CurrentUser, UoWDep
+from app.core.authorization.dependencies import PodContextDep
+from app.core.authorization.grants import (
+    list_grantee_resource_grants,
+    normalize_pod_resource_grants,
+    replace_grantee_resource_grants,
+    validate_pod_resource_grant_permissions,
+)
+from app.core.api.pagination import parse_uuid_page_token
+from app.core.helpers.slug import normalize_resource_name
+from app.modules.agent.api.dependencies import (
+    AgentResourceAdminDep,
+    AgentResourceDeleteDep,
+    AgentResourceEditorDep,
+    AgentResourceViewerDep,
+    AgentServiceDep,
+    AgentViewerDep,
+)
+from app.modules.agent.api.schemas import (
+    AgentActionResponse,
+    AgentDetailResponse,
+    AgentListResponse,
+    AgentMessageResponse,
+    AgentPermissionsReplaceRequest,
+    AgentPermissionsResponse,
+    AgentResponse,
+    AgentResourcePermissionResponse,
+    AgentSummaryResponse,
+    CreateAgentRequest,
+    UpdateAgentRequest,
+)
+from app.modules.agent.domain.entities import Agent
+
+router = APIRouter(prefix="/pods/{pod_id}/agents", tags=["agents"])
+
+
+def _agent_response(agent: Agent) -> AgentResponse:
+    return AgentResponse.model_validate(agent)
+
+
+async def _agent_action_response(agent: Agent) -> AgentActionResponse:
+    return AgentActionResponse(
+        **_agent_response(agent).model_dump(),
+        allowed_actions=agent.allowed_actions,
+    )
+
+
+def _agent_summary_response(agent: Agent) -> AgentSummaryResponse:
+    # `allowed_actions`, `toolsets` and `metadata` all live on the entity, so
+    # from_attributes validation picks them up directly.
+    return AgentSummaryResponse.model_validate(agent)
+
+
+@router.post(
+    "",
+    response_model=AgentActionResponse,
+    status_code=status.HTTP_201_CREATED,
+    operation_id="agent.create",
+    summary="Create Agent",
+    description=(
+        "Create a pod-owned agent definition with runtime, toolsets, and schemas."
+    ),
+)
+async def create_agent(
+    pod_id: UUID,
+    data: CreateAgentRequest,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    uow: UoWDep,
+    ctx: PodContextDep,
+) -> AgentActionResponse:
+    agent = await service.create_agent(
+        pod_id=pod_id,
+        user_id=user.id,
+        name=normalize_resource_name(data.name),
+        description=data.description,
+        icon_url=data.icon_url,
+        instruction=data.instruction,
+        agent_runtime=data.agent_runtime,
+        toolsets=data.toolsets,
+        input_schema=data.input_schema,
+        output_schema=data.output_schema,
+        visibility=data.visibility,
+        metadata=data.metadata,
+        ctx=ctx,
+    )
+    agent = await service.get_agent_by_name(
+        pod_id=pod_id,
+        name=agent.name,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    # Inline grants: apply resource permissions in the same request so callers
+    # don't have to follow create with a separate permissions-replace call (which
+    # previously was the *only* way grants stuck — passing them to create used to
+    # silently no-op). Same session as the create above, so it's atomic.
+    if data.permissions is not None and data.permissions.grants:
+        validate_pod_resource_grant_permissions(data.permissions.grants)
+        grants = await normalize_pod_resource_grants(
+            uow.session,
+            pod_id=pod_id,
+            grants=data.permissions.grants,
+        )
+        await replace_grantee_resource_grants(
+            uow.session,
+            pod_id=pod_id,
+            grantee_type="AGENT",
+            grantee_id=agent.id,
+            grants=grants,
+            created_by_user_id=user.id,
+        )
+    return await _agent_action_response(agent)
+
+
+@router.get(
+    "",
+    response_model=AgentListResponse,
+    operation_id="agent.list",
+    summary="List Agents",
+    description="List pod-owned agent definitions visible to the current user.",
+    dependencies=[AgentViewerDep],
+)
+async def list_agents(
+    pod_id: UUID,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    ctx: PodContextDep,
+    page_token: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=1000),
+) -> AgentListResponse:
+    agents, next_cursor = await service.list_agents(
+        pod_id=pod_id,
+        cursor=parse_uuid_page_token(page_token),
+        limit=limit,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    return AgentListResponse(
+        items=[_agent_summary_response(item) for item in agents],
+        limit=limit,
+        next_page_token=str(next_cursor) if next_cursor else None,
+    )
+
+
+@router.get(
+    "/{agent_name}",
+    response_model=AgentDetailResponse,
+    operation_id="agent.get",
+    summary="Get Agent",
+    description="Get one pod-owned agent definition by its stable name.",
+    dependencies=[AgentResourceViewerDep],
+)
+async def get_agent(
+    pod_id: UUID,
+    agent_name: str,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    uow: UoWDep,
+    ctx: PodContextDep,
+) -> AgentDetailResponse:
+    agent = await service.get_agent_by_name(
+        pod_id=pod_id,
+        name=agent_name,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    response = await _agent_action_response(agent)
+    return AgentDetailResponse(
+        **response.model_dump(),
+        permissions=await _agent_permissions_response(
+            uow,
+            pod_id=pod_id,
+            agent=agent,
+        ),
+    )
+
+
+@router.get(
+    "/{agent_name}/permissions",
+    response_model=AgentPermissionsResponse,
+    operation_id="agent.permissions.get",
+    summary="Get Agent Resource Permissions",
+    description="Get explicit resource grants assigned to an agent.",
+    dependencies=[AgentResourceViewerDep],
+)
+async def get_agent_permissions(
+    pod_id: UUID,
+    agent_name: str,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    uow: UoWDep,
+    ctx: PodContextDep,
+) -> AgentPermissionsResponse:
+    agent = await service.get_agent_by_name(
+        pod_id=pod_id,
+        name=agent_name,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    return await _agent_permissions_response(uow, pod_id=pod_id, agent=agent)
+
+
+@router.put(
+    "/{agent_name}/permissions",
+    response_model=AgentPermissionsResponse,
+    operation_id="agent.permissions.replace",
+    summary="Replace Agent Resource Permissions",
+    description="Replace explicit resource grants assigned to an agent.",
+    dependencies=[AgentResourceAdminDep],
+)
+async def replace_agent_permissions(
+    pod_id: UUID,
+    agent_name: str,
+    data: AgentPermissionsReplaceRequest,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    uow: UoWDep,
+    ctx: PodContextDep,
+) -> AgentPermissionsResponse:
+    agent = await service.get_agent_by_name(
+        pod_id=pod_id,
+        name=agent_name,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    validate_pod_resource_grant_permissions(data.grants)
+    grants = await normalize_pod_resource_grants(
+        uow.session,
+        pod_id=pod_id,
+        grants=data.grants,
+    )
+    await replace_grantee_resource_grants(
+        uow.session,
+        pod_id=pod_id,
+        grantee_type="AGENT",
+        grantee_id=agent.id,
+        grants=grants,
+        created_by_user_id=user.id,
+    )
+    return await _agent_permissions_response(uow, pod_id=pod_id, agent=agent)
+
+
+@router.patch(
+    "/{agent_name}",
+    response_model=AgentActionResponse,
+    operation_id="agent.update",
+    summary="Update Agent",
+    description=(
+        "Update an agent definition, including prompt instruction, runtime, "
+        "toolsets, and schemas."
+    ),
+    dependencies=[AgentResourceEditorDep],
+)
+async def update_agent(
+    pod_id: UUID,
+    agent_name: str,
+    data: UpdateAgentRequest,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    ctx: PodContextDep,
+) -> AgentActionResponse:
+    update_payload = data.model_dump(exclude_unset=True)
+    if "agent_runtime" in update_payload:
+        update_payload["agent_runtime"] = data.agent_runtime
+    agent = await service.update_agent(
+        pod_id=pod_id,
+        name=agent_name,
+        requester_user_id=user.id,
+        ctx=ctx,
+        **update_payload,
+    )
+    return await _agent_action_response(agent)
+
+
+@router.delete(
+    "/{agent_name}",
+    response_model=AgentMessageResponse,
+    operation_id="agent.delete",
+    summary="Delete Agent",
+    description="Delete a pod-owned agent definition by name.",
+    dependencies=[AgentResourceDeleteDep],
+)
+async def delete_agent(
+    pod_id: UUID,
+    agent_name: str,
+    user: CurrentUser,
+    service: AgentServiceDep,
+    ctx: PodContextDep,
+) -> AgentMessageResponse:
+    await service.delete_agent(
+        pod_id=pod_id,
+        name=agent_name,
+        requester_user_id=user.id,
+        ctx=ctx,
+    )
+    return AgentMessageResponse(message=f"Agent {agent_name} deleted successfully")
+
+
+async def _agent_permissions_response(
+    uow: UoWDep,
+    *,
+    pod_id: UUID,
+    agent: Agent,
+) -> AgentPermissionsResponse:
+    grouped = await list_grantee_resource_grants(
+        uow.session,
+        pod_id=pod_id,
+        grantee_type="AGENT",
+        grantee_id=agent.id,
+    )
+    return AgentPermissionsResponse(
+        agent_id=agent.id,
+        agent_name=agent.name,
+        grants=[
+            AgentResourcePermissionResponse(
+                resource_type=resource_type,
+                resource_name=resource_name,
+                permission_ids=sorted(set(permission_ids)),
+            )
+            for (resource_type, resource_name), permission_ids in grouped.items()
+        ],
+    )

@@ -1,0 +1,17 @@
+{
+  "informational": {
+    "rawButtonElements": 23,
+    "rawSwitchButtonElements": 0,
+    "rawFieldElements": 3,
+    "inlineEditableFieldElements": 1,
+    "cardSkinOverrides": 0,
+    "buttonSkinOverrides": 0,
+    "badgePresentationOverrides": 3,
+    "viewportHeightWithoutDvhFallback": 0,
+    "hoverOnlyDisplayReveal": 0,
+    "fixedWidthsWiderThanPhones": 0
+  },
+  "protectedAssistant": {
+    "rawButtonElements": 1
+  }
+}

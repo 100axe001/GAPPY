@@ -1,0 +1,64 @@
+{
+  "text": "<at>Lemma</at> Do you know shera?",
+  "textFormat": "plain",
+  "attachments": [
+    {
+      "contentType": "text/html",
+      "content": "<p><span itemtype=\"http://schema.skype.com/Mention\" itemscope=\"\" itemid=\"0\">Lemma</span>&nbsp;Do you know shera?</p>"
+    }
+  ],
+  "type": "message",
+  "timestamp": "2026-04-15T07:03:58.1046271Z",
+  "localTimestamp": "2026-04-15T12:33:58.1046271+05:30",
+  "id": "1776236638028",
+  "channelId": "msteams",
+  "serviceUrl": "__FAKE_TEAMS_SERVICE_URL__",
+  "from": {
+    "id": "29:1hLbQp0J8ngmMqDR33A1Lf6TGFrOdjSLWDAz9pfFRQhnuxgP2WNqGIjgNdAwYG3enpobRJ3AmSDj0do8Po1NYVw",
+    "name": "Test User",
+    "aadObjectId": "b20e77ef-bd6b-4636-9f5b-20dd28beba24"
+  },
+  "conversation": {
+    "isGroup": true,
+    "conversationType": "channel",
+    "tenantId": "1b5c589f-1718-42c8-8244-166fbe5dd8fc",
+    "id": "19:3b0dc498aeeb42abba81a2f6dd46ec67@thread.tacv2;messageid=1776236638028"
+  },
+  "recipient": {
+    "id": "28:c3e201f2-a8ef-4026-bef4-d3da0153b191",
+    "name": "lemma-bot"
+  },
+  "entities": [
+    {
+      "mentioned": {
+        "id": "28:c3e201f2-a8ef-4026-bef4-d3da0153b191",
+        "name": "Lemma"
+      },
+      "text": "<at>Lemma</at>",
+      "type": "mention"
+    },
+    {
+      "locale": "en-GB",
+      "country": "GB",
+      "platform": "Mac",
+      "timezone": "Asia/Calcutta",
+      "type": "clientInfo"
+    }
+  ],
+  "channelData": {
+    "teamsChannelId": "19:3b0dc498aeeb42abba81a2f6dd46ec67@thread.tacv2",
+    "teamsTeamId": "19:OHV_1hj7zqTYZp07gcOvjWBdiwR8UML4cj3vny7OANk1@thread.tacv2",
+    "channel": {
+      "id": "19:3b0dc498aeeb42abba81a2f6dd46ec67@thread.tacv2"
+    },
+    "team": {
+      "aadGroupId": "27029c82-5e8f-48a5-ae72-4cb914987d30",
+      "id": "19:OHV_1hj7zqTYZp07gcOvjWBdiwR8UML4cj3vny7OANk1@thread.tacv2"
+    },
+    "tenant": {
+      "id": "1b5c589f-1718-42c8-8244-166fbe5dd8fc"
+    }
+  },
+  "locale": "en-GB",
+  "localTimezone": "Asia/Calcutta"
+}

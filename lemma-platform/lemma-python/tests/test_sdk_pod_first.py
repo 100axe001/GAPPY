@@ -1,0 +1,294 @@
+from __future__ import annotations
+
+from typing import Any
+from uuid import UUID
+
+import pytest
+
+from lemma_sdk import Lemma, Pod
+from lemma_sdk.errors import LemmaAPIError, LemmaConfigError
+from lemma_sdk.openapi_client.models.function_run_response import FunctionRunResponse
+from lemma_sdk.openapi_client.models.operation_execution_response import (
+    OperationExecutionResponse,
+)
+from lemma_sdk.openapi_client.models.record_create_response_record_create import (
+    RecordCreateResponseRecordCreate,
+)
+from lemma_sdk.transport import LemmaTransport
+
+
+class StubTransport:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.generated = object()
+
+    def call(self, endpoint, *path_args, body=None, body_model=None, **kwargs):
+        self.calls.append(
+            {
+                "endpoint": endpoint.__name__,
+                "path_args": path_args,
+                "body": body,
+                "body_model": getattr(body_model, "__name__", None),
+                "kwargs": kwargs,
+            }
+        )
+        if endpoint.__name__.endswith("record_create"):
+            return RecordCreateResponseRecordCreate.from_dict(
+                {"id": "rec-1", **body["data"]}
+            )
+        if endpoint.__name__.endswith("function_run"):
+            return FunctionRunResponse.from_dict(
+                {
+                    "completed_at": None,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "function_id": "33333333-3333-4333-8333-333333333333",
+                    "id": "44444444-4444-4444-8444-444444444444",
+                    "started_at": "2026-01-01T00:00:00Z",
+                    "status": "COMPLETED",
+                    "user_id": "55555555-5555-4555-8555-555555555555",
+                    "input_data": body.get("input_data"),
+                    "output_data": {"ok": True},
+                }
+            )
+        if endpoint.__name__.endswith("connector_operation_execute"):
+            return OperationExecutionResponse.from_dict(
+                {
+                    "result": {"sent": True},
+                }
+            )
+        return None
+
+    def close(self) -> None:
+        pass
+
+
+def test_pod_table_create_binds_pod_and_returns_typed_record():
+    transport = StubTransport()
+    lemma = Lemma(token="token", base_url="https://api.example.test", org_id="11111111-1111-4111-8111-111111111111")
+    lemma._transport = transport
+    pod = lemma.pod("22222222-2222-4222-8222-222222222222")
+
+    record = pod.table("tickets").create({"title": "Refund request"})
+
+    # Records now return the bare record object (no {data} envelope).
+    assert isinstance(record, dict)
+    assert record["id"] == "rec-1"
+    assert record["title"] == "Refund request"
+    assert transport.calls[0] == {
+        "endpoint": "lemma_sdk.openapi_client.api.records.record_create",
+        "path_args": (UUID("22222222-2222-4222-8222-222222222222"), "tickets"),
+        "body": {"data": {"title": "Refund request"}},
+        "body_model": "CreateRecordRequest",
+        "kwargs": {},
+    }
+
+
+def test_pod_records_list_serializes_structured_filter_and_sort_clauses():
+    transport = StubTransport()
+    pod = Pod(
+        "22222222-2222-4222-8222-222222222222",
+        org_id="11111111-1111-4111-8111-111111111111",
+        token="token",
+        base_url="https://api.example.test",
+    )
+    pod._transport = transport
+    pod.records._transport = transport
+
+    pod.records.list(
+        "issues",
+        limit=1,
+        filter=[{"field": "status", "op": "eq", "value": "open"}],
+        sort=[{"field": "updated_at", "direction": "desc"}],
+    )
+
+    call = transport.calls[0]
+    assert call["endpoint"] == "lemma_sdk.openapi_client.api.records.record_list"
+    assert call["path_args"] == (
+        UUID("22222222-2222-4222-8222-222222222222"),
+        "issues",
+    )
+    assert call["kwargs"]["limit"] == 1
+    assert call["kwargs"]["offset"] == 0
+    assert call["kwargs"]["filter_"] == ['{"field":"status","op":"eq","value":"open"}']
+    assert call["kwargs"]["sort"] == ['{"field":"updated_at","direction":"desc"}']
+
+
+def test_pod_functions_run_binds_pod_and_returns_typed_run():
+    transport = StubTransport()
+    pod = Pod(
+        "22222222-2222-4222-8222-222222222222",
+        org_id="11111111-1111-4111-8111-111111111111",
+        token="token",
+        base_url="https://api.example.test",
+    )
+    pod._transport = transport
+    pod.functions._transport = transport
+
+    run = pod.functions.run("triage_ticket", {"ticket_id": "rec-1"})
+
+    assert isinstance(run, FunctionRunResponse)
+    assert str(run.id) == "44444444-4444-4444-8444-444444444444"
+    assert transport.calls[0]["path_args"] == (
+        UUID("22222222-2222-4222-8222-222222222222"),
+        "triage_ticket",
+    )
+    assert transport.calls[0]["body"] == {"input_data": {"ticket_id": "rec-1"}}
+
+
+def test_pod_connectors_execute_uses_bound_org_id():
+    transport = StubTransport()
+    pod = Pod(
+        "22222222-2222-4222-8222-222222222222",
+        org_id="11111111-1111-4111-8111-111111111111",
+        token="token",
+        base_url="https://api.example.test",
+    )
+    pod._transport = transport
+    pod.connectors._transport = transport
+    pod.connectors.operations._parent._transport = transport
+
+    result = pod.connectors.execute(
+        "gmail",
+        "GMAIL_SEND_EMAIL",
+        {"to": "a@example.com", "subject": "Hi"},
+    )
+
+    assert isinstance(result, OperationExecutionResponse)
+    assert result.result == {"sent": True}
+    assert transport.calls[0]["path_args"] == (
+        UUID("11111111-1111-4111-8111-111111111111"),
+        "gmail",
+        "GMAIL_SEND_EMAIL",
+    )
+    assert transport.calls[0]["body"] == {
+        "payload": {"to": "a@example.com", "subject": "Hi"}
+    }
+
+
+def test_connectors_triggers_list_uses_org_and_auth_config_path_args():
+    transport = StubTransport()
+    lemma = Lemma(
+        token="token",
+        base_url="https://api.example.test",
+        org_id="11111111-1111-4111-8111-111111111111",
+    )
+    lemma._transport = transport
+
+    lemma.connectors.triggers.list("work-outlook", search="message", limit=5)
+
+    assert transport.calls[0]["endpoint"].endswith("connector_trigger_list")
+    assert transport.calls[0]["path_args"] == (
+        UUID("11111111-1111-4111-8111-111111111111"),
+        "work-outlook",
+    )
+    assert transport.calls[0]["kwargs"] == {
+        "search": "message",
+        "limit": 5,
+    }
+
+
+def test_connectors_trigger_get_uses_org_auth_config_and_trigger():
+    transport = StubTransport()
+    lemma = Lemma(
+        token="token",
+        base_url="https://api.example.test",
+        org_id="11111111-1111-4111-8111-111111111111",
+    )
+    lemma._transport = transport
+
+    lemma.connectors.triggers.get("work-outlook", "outlook:composio:new_message")
+
+    assert transport.calls[0]["endpoint"].endswith("connector_trigger_get")
+    assert transport.calls[0]["path_args"] == (
+        UUID("11111111-1111-4111-8111-111111111111"),
+        "work-outlook",
+        "outlook:composio:new_message",
+    )
+
+
+def test_pod_surfaces_upsert_and_setup_use_generated_models():
+    transport = StubTransport()
+    pod = Pod(
+        "22222222-2222-4222-8222-222222222222",
+        org_id="11111111-1111-4111-8111-111111111111",
+        token="token",
+        base_url="https://api.example.test",
+    )
+    pod._transport = transport
+    pod.surfaces._transport = transport
+
+    # The single upsert covers create, config, channels, and enable/disable.
+    pod.surfaces.upsert(
+        "SLACK",
+        {
+            "default_agent_name": "triage",
+            "credential_mode": "SYSTEM",
+            "account_id": "33333333-3333-4333-8333-333333333333",
+            "config": {
+                "channels": [
+                    {"channel_id": "C123", "agent_name": "triage"}
+                ]
+            },
+        },
+    )
+
+    assert transport.calls[0]["endpoint"].endswith("agent_surface_upsert")
+    assert transport.calls[0]["path_args"] == (
+        UUID("22222222-2222-4222-8222-222222222222"),
+        "SLACK",
+    )
+    assert transport.calls[0]["body_model"] == "SurfaceUpsertRequest"
+
+    # setup merges status + admin-consent + checklist into one read.
+    pod.surfaces.setup("slack")
+    assert transport.calls[1]["endpoint"].endswith("agent_surface_setup")
+    assert transport.calls[1]["path_args"] == (
+        UUID("22222222-2222-4222-8222-222222222222"),
+        "slack",
+    )
+
+
+def test_user_update_profile_uses_generated_model():
+    transport = StubTransport()
+    lemma = Lemma(
+        token="token",
+        base_url="https://api.example.test",
+        org_id="11111111-1111-4111-8111-111111111111",
+    )
+    lemma._transport = transport
+    lemma.user._transport = transport
+
+    lemma.user.update_profile(
+        {"mobile_number": "+15551234567", "telegram_username": "surfaceuser"}
+    )
+
+    assert transport.calls[0]["endpoint"].endswith("user_profile_upsert")
+    assert transport.calls[0]["path_args"] == ()
+    assert transport.calls[0]["body_model"] == "UserProfileRequest"
+    assert transport.calls[0]["body"] == {
+        "mobile_number": "+15551234567",
+        "telegram_username": "surfaceuser",
+    }
+
+
+def test_pod_from_env_requires_pod_id(monkeypatch, tmp_path):
+    monkeypatch.setenv("LEMMA_TOKEN", "token")
+    monkeypatch.setenv("LEMMA_BASE_URL", "https://api.example.test")
+    monkeypatch.delenv("LEMMA_POD_ID", raising=False)
+
+    with pytest.raises(LemmaConfigError):
+        Pod.from_env(config_path=tmp_path / "empty-config.json")
+
+
+def test_transport_raises_typed_api_error():
+    error = LemmaTransport._error_from_response(
+        LemmaTransport.__new__(LemmaTransport),
+        400,
+        None,
+        b'{"message":"bad request","code":"BAD","details":{"field":"x"}}',
+    )
+
+    assert isinstance(error, LemmaAPIError)
+    assert error.status_code == 400
+    assert error.code == "BAD"
+    assert error.details == {"field": "x"}

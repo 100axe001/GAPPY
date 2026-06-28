@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeOS — Personal Space</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- AUTH LAYER -->
+  <div id="auth-panel" class="auth-panel-wrapper" style="display: none;">
+    <div class="auth-card">
+      <h1>LifeOS</h1>
+      <p>AI-powered Personal Command Centre</p>
+      
+      <form id="auth-form">
+        <div class="form-group">
+          <label for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" required placeholder="name@domain.com">
+        </div>
+        <div class="form-group">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" required placeholder="••••••••">
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem;">
+          <button type="submit" id="btn-login" class="btn btn-primary" style="width: 100%;">Log In</button>
+          <button type="button" id="btn-signup" class="btn btn-secondary" style="width: 100%;">Sign Up</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP LAYER -->
+  <div id="app-panel" class="main-wrapper" style="display: none;">
+    
+    <!-- Left Global Sidebar (Desktop) -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <h2>LifeOS</h2>
+        <nav class="sidebar-nav">
+          <button class="nav-link active" onclick="switchTab('today')">
+            <i data-lucide="calendar"></i> Today
+          </button>
+          <button class="nav-link" onclick="switchTab('life-ops')">
+            <i data-lucide="check-square"></i> Life Ops
+          </button>
+          <button class="nav-link" onclick="switchTab('second-brain')">
+            <i data-lucide="brain"></i> Second Brain
+          </button>
+          <button class="nav-link" onclick="switchTab('learning')">
+            <i data-lucide="graduation-cap"></i> Learning
+          </button>
+          <button class="nav-link" onclick="switchTab('search')">
+            <i data-lucide="search"></i> Search
+          </button>
+          <button class="nav-link" onclick="switchTab('integrations')">
+            <i data-lucide="link-2"></i> Integrations
+          </button>
+        </nav>
+      </div>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="avatar-letters">U</div>
+          <div class="user-details">
+            <span class="user-name" id="user-email-display">user@domain.com</span>
+          </div>
+        </div>
+        <button id="btn-logout" class="logout-link">
+          <i data-lucide="log-out" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile Bottom Tab Bar -->
+    <nav class="mobile-tab-bar">
+      <button class="mobile-tab-btn active" onclick="switchTab('today')">
+        <i data-lucide="calendar"></i>
+        <span>Today</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('life-ops')">
+        <i data-lucide="check-square"></i>
+        <span>Ops</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('second-brain')">
+        <i data-lucide="brain"></i>
+        <span>Brain</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('learning')">
+        <i data-lucide="graduation-cap"></i>
+        <span>Learn</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('search')">
+        <i data-lucide="search"></i>
+        <span>Search</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('integrations')">
+        <i data-lucide="link-2"></i>
+        <span>Link</span>
+      </button>
+    </nav>
+
+    <!-- Centered Main Content Wrapper -->
+    <main class="main-content">
+      <div class="content-container">
+
+        <!-- 1. TODAY VIEW (LANDING PANEL) -->
+        <section id="panel-today" class="panel active">
+          <h1 class="page-title" id="today-greeting">Good morning.</h1>
+          
+          <div style="text-align: right; margin-bottom: 1.5rem;">
+            <button onclick="startWeeklyReview()" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+              <i data-lucide="sparkles" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Weekly Review
+            </button>
+          </div>
+
+          <!-- Assistant Conversational Bar -->
+          <div class="paper-surface" style="margin-bottom: 2rem; border-left: 4px solid var(--accent);">
+            <h2 style="font-size: 1.15rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="sparkles" style="color: var(--accent); width:18px; height:18px;"></i> Talk to LifeOS Assistant
+            </h2>
+            <form id="assistant-query-form" style="display: flex; gap: 0.75rem;">
+              <input type="text" id="assistant-query-input" placeholder="e.g. Schedule meeting tomorrow at 5 PM or check availability..." style="flex: 1; padding: 0.6rem 1rem;">
+              <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">Send</button>
+            </form>
+            <div id="assistant-query-response" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); background-color: var(--bg-primary); border-radius: 6px; font-size: 0.95rem; line-height: 1.5;">
+              <!-- Dynamic query output -->
+            </div>
+          </div>
+
+          <div>
+            <hr class="section-divider">
+            <span class="category-label">Overdue / Slipped</span>
+            <div id="today-overdue-list">
+              <!-- Dynamic overdue tasks -->
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <hr class="section-divider">
+            <span class="category-label">Due Today</span>
+            <div id="today-due-list">
+              <!-- Dynamic due today tasks -->
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <hr class="section-divider">
+            <span class="category-label">Spaced Reviews Pending</span>
+            <div id="today-reviews-list">
+              <!-- Dynamic review queue -->
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <hr class="section-divider">
+            <span class="category-label">Stale Follow-ups</span>
+            <div id="today-stale-list">
+              <!-- Dynamic stale list -->
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <hr class="section-divider">
+            <span class="category-label">AI Brain Insight</span>
+            <div id="today-insight-card">
+              <!-- Dynamic insight content -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. LIFE OPS (KANBAN CONVERTED TO PAPER LIST) -->
+        <section id="panel-life-ops" class="panel">
+          <h1 class="page-title">Life Ops</h1>
+          
+          <span class="category-label">Commitment Inbox</span>
+          <textarea id="commitment-input" class="commitment-textarea" placeholder="Drop anything here — I'll sort it out."></textarea>
+          
+          <!-- Commitment parsed preview -->
+          <div id="commitment-preview" style="display: none; padding: 1.25rem; border: 1px solid var(--border); background-color: var(--bg-surface); border-radius: 6px; margin-bottom: 1.5rem; box-shadow: var(--shadow-subtle);">
+            <span class="category-label" style="color: var(--accent);">Parsed Preview</span>
+            <div id="commitment-preview-details" style="font-size: 0.95rem; margin-bottom: 1.25rem; line-height: 1.5;"></div>
+            <div style="display: flex; gap: 0.75rem;">
+              <button id="btn-commitment-confirm" class="btn btn-primary">Confirm & Save</button>
+              <button id="btn-commitment-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+            <span class="category-label">To Do Lists</span>
+          </div>
+          
+          <div id="ops-tasks-list">
+            <!-- Rendered in groups Todo, In Progress, Completed -->
+          </div>
+
+          <hr class="section-divider">
+
+          <span class="category-label">Quick Capture Task</span>
+          <form id="create-task-form" class="paper-surface">
+            <div class="form-group">
+              <label for="task-title">Action / Title</label>
+              <input type="text" id="task-title" required placeholder="What needs to be done?">
+            </div>
+            <div class="form-group">
+              <label for="task-desc">Description</label>
+              <textarea id="task-desc" rows="3" placeholder="Add details..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="task-priority">Priority</label>
+              <select id="task-priority">
+                <option value="high">High</option>
+                <option value="medium" selected>Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="task-due">Due Date</label>
+              <input type="date" id="task-due">
+            </div>
+            <div class="form-group">
+              <label for="task-recurrence">Recurrence</label>
+              <select id="task-recurrence" onchange="toggleCustomRecurrence()">
+                <option value="none" selected>None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="custom">Custom (Every X days)</option>
+              </select>
+            </div>
+            <div class="form-group" id="custom-recurrence-days-group" style="display: none;">
+              <label for="task-recurrence-days">Recurrence Interval (Days)</label>
+              <input type="number" id="task-recurrence-days" min="1" placeholder="e.g. 5">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Create Task</button>
+          </form>
+        </section>
+
+        <!-- 3. SECOND BRAIN (SPLIT NOTEBOOK LAYOUT) -->
+        <section id="panel-second-brain" class="panel">
+          <h1 class="page-title">Second Brain</h1>
+          
+          <div class="brain-container">
+            <!-- Left sidebar list of note titles -->
+            <div class="notes-sidebar">
+              <div class="notes-sidebar-header">Brain Dump</div>
+              <div id="notes-list" class="notes-sidebar-list">
+                <!-- notes populated dynamically -->
+              </div>
+            </div>
+            
+            <!-- Right full size editor view -->
+            <div class="notes-editor-panel">
+              <input type="text" id="note-editor-title" class="note-editor-title" placeholder="Untitled Note">
+              <textarea id="note-editor-textarea" class="note-editor-textarea" placeholder="Start writing your thoughts..."></textarea>
+              
+              <!-- Floating editor toolbar -->
+              <div id="floating-toolbar" class="floating-editor-toolbar" style="display: none;">
+                <button id="toolbar-btn-bold">B</button>
+                <button id="toolbar-btn-italic">I</button>
+                <button id="toolbar-btn-link">Link</button>
+              </div>
+              
+              <!-- Connection Links -->
+              <div id="note-related-links" class="related-notes-container" style="display: none;">
+                <!-- Related links populated here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Note Actions and Draft compilation cards -->
+          <div class="dashboard-grid" style="margin-top: 2rem;">
+            <div class="paper-surface">
+              <h2>Add New Thought</h2>
+              <form id="create-note-form">
+                <div class="form-group">
+                  <label for="note-title">Title</label>
+                  <input type="text" id="note-title" required placeholder="Note Title">
+                </div>
+                <div class="form-group">
+                  <label for="note-body">Content / Thought</label>
+                  <textarea id="note-body" rows="4" required placeholder="Paste links, thoughts..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Note</button>
+              </form>
+            </div>
+            
+            <div class="paper-surface">
+              <h2>Draft Generator</h2>
+              <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1rem;">
+                Select notes in the Brain Dump list (using checkboxes) then compile them into a unified draft using AI.
+              </p>
+              <div class="form-group">
+                <label for="draft-format">Output Format</label>
+                <select id="draft-format">
+                  <option value="essay">Essay</option>
+                  <option value="plan">Plan / Checklist</option>
+                  <option value="email">Formal Email</option>
+                  <option value="summary">Concise Summary</option>
+                </select>
+              </div>
+              <button id="btn-generate-draft" class="btn btn-primary" style="width: 100%;">
+                Compile Selected
+              </button>
+              
+              <div id="draft-output-box" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); background-color: var(--bg-surface); border-radius: 6px;">
+                <h4 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                  <span>AI Draft Output</span>
+                  <button id="btn-save-draft" class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Save as Note</button>
+                </h4>
+                <textarea id="draft-result-text" rows="6" style="width: 100%; border: none; background: transparent; font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. LEARNING COMPANION -->
+        <section id="panel-learning" class="panel">
+          <h1 class="page-title">Learning Companion</h1>
+          
+          <!-- Study Timer -->
+          <div class="timer-container">
+            <div id="pomodoro-timer" class="timer-number">25:00</div>
+            <div class="timer-links">
+              <span id="btn-pomodoro-start" class="text-link">Start</span>
+              <span id="btn-pomodoro-reset" class="text-link">Reset</span>
+            </div>
+            
+            <!-- AI debrief form inside timer card -->
+            <form id="pomodoro-debrief-form" style="display: none; width: 85%; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+              <span class="category-label">AI Pomodoro Debrief</span>
+              <div class="form-group">
+                <label for="debrief-summary">What did you study during this session?</label>
+                <textarea id="debrief-summary" rows="2" required placeholder="Describe what you covered..."></textarea>
+              </div>
+              <div class="form-group">
+                <label for="debrief-confusion">Any parts you struggled with?</label>
+                <textarea id="debrief-confusion" rows="2" placeholder="Self-reported confusion or struggles..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Debrief</button>
+            </form>
+            <div id="debrief-output" style="display: none; margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--border); background-color: var(--bg-surface); font-size: 0.9rem; width: 85%;"></div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div>
+              <!-- PDF Upload / Index -->
+              <div class="paper-surface">
+                <h2>Upload Study Material</h2>
+                <form id="upload-pdf-form" enctype="multipart/form-data">
+                  <div class="form-group">
+                    <input type="file" id="study-file" accept=".pdf,.txt" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width: 100%;">Upload & Index</button>
+                </form>
+              </div>
+
+              <!-- Resource list -->
+              <div class="paper-surface">
+                <h2>Study Resources</h2>
+                <div id="study-resources-list"></div>
+              </div>
+
+              <!-- Spaced repetition queue -->
+              <div class="paper-surface">
+                <h2>Spaced Repetition Queue</h2>
+                <div id="spaced-rep-list"></div>
+              </div>
+
+              <!-- Weak Topics Radar -->
+              <div class="paper-surface">
+                <h2>Weak Topic Radar</h2>
+                <div id="weak-topics-list"></div>
+              </div>
+            </div>
+            
+            <div>
+              <!-- Active Study Room / Single Question quiz -->
+              <div class="paper-surface" id="quiz-room-card">
+                <h2>Active Study Room</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                  Select a study resource to begin a revision session, or report confusion to get revision plans & practice questions.
+                </p>
+                
+                <form id="study-session-form" style="display: none;">
+                  <input type="hidden" id="study-material-id">
+                  <div class="form-group">
+                    <label for="study-confusion">What part are you confused about? (Optional)</label>
+                    <textarea id="study-confusion" rows="3" placeholder="e.g. I don't understand Overfitting vs Underfitting"></textarea>
+                  </div>
+                  <button type="submit" id="btn-start-study" class="btn btn-primary" style="width: 100%;">
+                    Generate Practice
+                  </button>
+                </form>
+
+                <!-- Dynamic Practice quiz (Question by Question rendering) -->
+                <div id="study-session-output" style="display: none; margin-top: 1.5rem;"></div>
+              </div>
+
+              <!-- Spaced Repetition Quiz -->
+              <div class="paper-surface" id="spaced-rep-quiz-card" style="display: none;">
+                <h2>Recall Quiz</h2>
+                <div id="spaced-quiz-concept-info" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;"></div>
+                <div id="spaced-quiz-questions-list"></div>
+                <button id="btn-submit-spaced-quiz" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">Submit Answers</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. SEARCH TAB -->
+        <section id="panel-search" class="panel">
+          <h1 class="page-title">Search</h1>
+          <div class="form-group">
+            <input type="text" id="global-search-input" placeholder="Search tasks, notes, documents..." style="font-size: 1.1rem; padding: 0.9rem 1.2rem;">
+          </div>
+          
+          <span class="category-label">Search Results</span>
+          <div id="search-results-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+            <p class="empty-state-text">Type something above to begin searching.</p>
+          </div>
+        </section>
+
+        <!-- 6. INTEGRATIONS TAB -->
+        <section id="panel-integrations" class="panel">
+          <h1 class="page-title">Integrations</h1>
+          <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">
+            Connect your favorite apps and allow the LifeOS AI Assistant to help you manage your calendar, tasks, and notes directly.
+          </p>
+          
+          <div id="integrations-list" class="dashboard-grid">
+            <!-- Dynamic integration cards will be injected here -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- POPUP DETAILS MODAL -->
+  <div id="details-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="modal-title">Item Details</h3>
+      <div id="modal-body" style="font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">
+        <!-- Dynamic body -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button id="modal-close-btn" class="btn btn-secondary">Close</button>
+        <button id="modal-action-btn" class="btn btn-primary" style="display: none;"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEKLY REVIEW MODAL -->
+  <div id="weekly-review-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+      <h3 style="margin-bottom: 1.25rem; font-family: var(--font-serif); font-size: 1.4rem;">
+        Weekly Review Summary
+      </h3>
+      <div id="weekly-review-body" style="font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6; max-height: 250px; overflow-y: auto; padding: 0.75rem; background: var(--bg-primary); border-radius: 6px; border: 1px solid var(--border);">
+        <!-- Dynamic summary content -->
+      </div>
+      <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-primary); font-family: var(--font-sans); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Items Requiring Attention</h4>
+      <div id="weekly-review-attention-list" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; max-height: 180px; overflow-y: auto;">
+        <!-- Dynamic list of tasks to reschedule -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button onclick="closeWeeklyReviewModal()" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- SPA frontend logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

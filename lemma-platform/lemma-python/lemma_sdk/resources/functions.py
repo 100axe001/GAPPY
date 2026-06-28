@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from ..openapi_client.api.functions import (
+    function_create,
+    function_delete,
+    function_get,
+    function_list,
+    function_permissions_get,
+    function_permissions_replace,
+    function_run,
+    function_run_get,
+    function_run_list,
+    function_update,
+)
+from ..openapi_client.models.create_function_request import CreateFunctionRequest
+from ..openapi_client.models.execute_function_request import ExecuteFunctionRequest
+from ..openapi_client.models.function_detail_response import FunctionDetailResponse
+from ..openapi_client.models.function_list_response import FunctionListResponse
+from ..openapi_client.models.function_permissions_replace_request import (
+    FunctionPermissionsReplaceRequest,
+)
+from ..openapi_client.models.function_permissions_response import (
+    FunctionPermissionsResponse,
+)
+from ..openapi_client.models.function_run_list_response import FunctionRunListResponse
+from ..openapi_client.models.function_run_response import FunctionRunResponse
+from ..openapi_client.models.update_function_request import UpdateFunctionRequest
+from ..types import FunctionInput
+from .base import BoundResource, as_uuid, compact
+
+
+class PodFunctions(BoundResource):
+    def list(self, *, limit: int = 100) -> FunctionListResponse:
+        return self._call(function_list, self._pod_uuid(), limit=limit)
+
+    def create(self, request: CreateFunctionRequest) -> FunctionDetailResponse:
+        return self._call(function_create, self._pod_uuid(), body=request)
+
+    def get(self, name: str) -> FunctionDetailResponse:
+        return self._call(function_get, self._pod_uuid(), name)
+
+    def update(self, name: str, request: UpdateFunctionRequest) -> FunctionDetailResponse:
+        return self._call(function_update, self._pod_uuid(), name, body=request)
+
+    def delete(self, name: str) -> None:
+        self._call(function_delete, self._pod_uuid(), name)
+
+    def run(self, name: str, input: FunctionInput | None = None) -> FunctionRunResponse:
+        return self._call(
+            function_run,
+            self._pod_uuid(),
+            name,
+            body=compact({"input_data": input}),
+            body_model=ExecuteFunctionRequest,
+        )
+
+    execute = run
+
+    def runs(self, name: str, *, limit: int = 100) -> FunctionRunListResponse:
+        return self._call(function_run_list, self._pod_uuid(), name, limit=limit)
+
+    def run_get(self, name: str, run_id: str) -> FunctionRunResponse:
+        return self._call(function_run_get, self._pod_uuid(), name, as_uuid(run_id))
+
+    def permissions(self, name: str) -> FunctionPermissionsResponse:
+        return self._call(function_permissions_get, self._pod_uuid(), name)
+
+    def replace_permissions(
+        self,
+        name: str,
+        request: FunctionPermissionsReplaceRequest,
+    ) -> FunctionPermissionsResponse:
+        return self._call(
+            function_permissions_replace,
+            self._pod_uuid(),
+            name,
+            body=request,
+        )

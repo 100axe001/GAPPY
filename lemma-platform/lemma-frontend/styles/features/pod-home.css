@@ -1,0 +1,366 @@
+.pod-page-intro {
+  border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-1) 88%, transparent), color-mix(in srgb, var(--surface-2) 62%, transparent)),
+    var(--surface-1);
+  box-shadow:
+    0 18px 46px -40px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.pod-page-intro-title {
+  color: var(--text-primary);
+  font-family: var(--font-bricolage-grotesque, "Bricolage Grotesque"), var(--font-ibm-plex-sans, "IBM Plex Sans"), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .pod-page-intro-title {
+    font-size: 2.375rem;
+  }
+}
+
+.pod-journey-panel {
+  border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+  box-shadow:
+    0 16px 42px -38px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.pod-home-surface-nudge {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  margin-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.pod-home-surface-nudge:hover,
+.pod-home-surface-nudge:focus-visible {
+  color: var(--text-primary);
+}
+
+.pod-home-surface-icons {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pod-home-surface-icon {
+  display: inline-flex;
+  width: 1.625rem;
+  height: 1.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.pod-home-surface-logo {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+}
+
+.pod-home-surface-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pod-home-surface-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--action-primary);
+  font-weight: 600;
+}
+
+.pod-home-surface-nudge:hover .pod-home-surface-action,
+.pod-home-surface-nudge:focus-visible .pod-home-surface-action {
+  color: var(--action-primary-hover);
+}
+
+@media (max-width: 640px) {
+  .pod-home-surface-nudge {
+    flex-wrap: wrap;
+    gap: 0.375rem 0.5rem;
+  }
+
+  .pod-home-surface-copy {
+    white-space: normal;
+  }
+}
+
+.pod-home-work-section {
+  padding-top: var(--space-8);
+  border-top: 0 !important;
+  box-shadow: none !important;
+}
+
+.pod-home-work-section::before,
+.pod-home-work-section::after {
+  display: none !important;
+  content: none !important;
+}
+
+.pod-home-work-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pod-home-work-title {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.pod-home-work-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: var(--font-mono-family);
+  font-size: 0.688rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.pod-home-work-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--state-success);
+  animation: pod-live-blink 2s infinite;
+}
+
+@keyframes pod-live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* ── Single container with three sections separated by borders ── */
+.pod-home-work-panel {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.pod-home-work-section-row {
+  padding: 0.75rem 0;
+}
+
+.pod-home-work-section-row + .pod-home-work-section-row {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 60%, transparent);
+}
+
+.pod-home-work-section-label {
+  font-family: var(--font-mono-family);
+  font-size: 0.656rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 0.5rem;
+}
+
+.pod-home-work-list {
+  margin: 0;
+  padding: 0;
+}
+
+.pod-home-work-section-empty {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0;
+  text-align: left;
+}
+
+.pod-home-work-section-empty-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.pod-home-work-section-empty p {
+  max-width: min(32rem, 100%);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: var(--leading-relaxed);
+}
+
+@media (max-width: 640px) {
+  .pod-home-work-section-empty {
+    justify-content: flex-start;
+  }
+}
+
+/* Legacy grid / column — kept for context but no longer used by Today */
+.pod-home-work-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.pod-home-work-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pod-home-work-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.pod-home-work-column-header h3 {
+  color: var(--text-secondary);
+  font-family: var(--font-mono-family);
+  font-size: 0.593rem;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.pod-home-work-card {
+  position: relative;
+  margin-inline: -0.25rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  box-shadow: none;
+}
+
+.pod-home-work-card + .pod-home-work-card {
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 34%, transparent);
+}
+
+.pod-home-work-card:hover,
+.pod-home-work-card:focus-visible {
+  background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+}
+
+.pod-home-work-card-content {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 1rem;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.pod-home-work-row-icon {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: -0.125rem;
+}
+
+.pod-home-work-resource-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.pod-home-work-resource-icon .lemma-product-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.pod-home-work-card-title {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: var(--leading-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pod-home-work-card-detail {
+  display: block;
+  display: -webkit-box;
+  margin-top: 0.1875rem;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.pod-home-work-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.pod-home-work-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  gap: 0.4375rem;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pod-home-work-empty p {
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.55;
+  max-width: 160px;
+}
+
+.pod-home-work-empty p + p {
+  color: var(--text-muted);
+}

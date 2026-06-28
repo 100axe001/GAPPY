@@ -1,0 +1,142 @@
+.pod-assistant-composer .lemma-assistant-composer-status-rail {
+  display: none;
+}
+
+.lemma-toast {
+  --lemma-toast-state: var(--border-subtle);
+  --lemma-toast-state-icon: var(--text-tertiary);
+  position: relative !important;
+  border: 1px solid var(--card-border-subtle) !important;
+  border-color: var(--lemma-toast-state) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  max-width: min(420px, calc(100vw - 32px)) !important;
+  padding-right: var(--space-9) !important;
+}
+
+.lemma-toast-success,
+[data-sonner-toast].lemma-toast[data-type="success"] {
+  --lemma-toast-state: color-mix(in srgb, var(--state-success) 72%, var(--border-subtle));
+  --lemma-toast-state-icon: var(--state-success);
+  background: color-mix(in srgb, var(--state-success) 5%, var(--card-bg)) !important;
+}
+
+.lemma-toast-error,
+[data-sonner-toast].lemma-toast[data-type="error"] {
+  --lemma-toast-state: color-mix(in srgb, var(--state-error) 76%, var(--border-subtle));
+  --lemma-toast-state-icon: var(--state-error);
+  background: color-mix(in srgb, var(--state-error) 5%, var(--card-bg)) !important;
+}
+
+.lemma-toast-warning,
+[data-sonner-toast].lemma-toast[data-type="warning"] {
+  --lemma-toast-state: color-mix(in srgb, var(--state-warning) 76%, var(--border-subtle));
+  --lemma-toast-state-icon: var(--state-warning);
+  background: color-mix(in srgb, var(--state-warning) 5%, var(--card-bg)) !important;
+}
+
+.lemma-toast-info,
+[data-sonner-toast].lemma-toast[data-type="info"] {
+  --lemma-toast-state: color-mix(in srgb, var(--state-info) 72%, var(--border-subtle));
+  --lemma-toast-state-icon: var(--state-info);
+  background: color-mix(in srgb, var(--state-info) 4%, var(--card-bg)) !important;
+}
+
+.lemma-toast-title {
+  color: var(--text-primary) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 500 !important;
+}
+
+.lemma-toast-description {
+  color: var(--text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.lemma-toast-icon {
+  color: var(--lemma-toast-state-icon) !important;
+}
+
+.lemma-toast-close {
+  inset: var(--space-2) var(--space-2) auto auto !important;
+  transform: none !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-color: transparent !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  color: var(--text-tertiary) !important;
+  opacity: 0.72 !important;
+}
+
+.lemma-toast-close:hover {
+  background: var(--card-bg-hover) !important;
+  color: var(--text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.pod-assistant-composer,
+.pod-assistant-composer[data-tone="subtle"],
+.pod-assistant-composer[data-tone="flat"] {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  padding: 8px;
+  backdrop-filter: none;
+}
+
+.pod-assistant-inputbar {
+  border: 1px solid var(--field-border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  padding: 0.875rem 1rem;
+  box-shadow: none;
+}
+
+.pod-assistant-inputbar:focus-within {
+  border-color: var(--field-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--field-border-focus) 16%, transparent);
+}
+
+/* Send button — indigo-violet gradient */
+.pod-home-send-button {
+  background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%) !important;
+}
+
+.pod-home-send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #8b7cf0 100%) !important;
+}
+
+.pod-home-send-button:disabled {
+  background: var(--surface-2) !important;
+  color: var(--text-tertiary);
+}
+
+/* Primary action button gradient for assistant composer */
+.button-primary-gradient {
+  background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%) !important;
+  color: #ffffff !important;
+}
+
+.button-primary-gradient:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #8b7cf0 100%) !important;
+}
+
+.pod-assistant-composer .lemma-assistant-plan-strip {
+  background: var(--bg-surface);
+  border-color: color-mix(in srgb, var(--border-default) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.pod-assistant-header-maximized {
+  border-bottom: 0 !important;
+  background: transparent !important;
+}
+
+/* Quiet resource ledgers: airy rows, no full-width ruled-table feeling. */

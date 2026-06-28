@@ -1,0 +1,726 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "lemma",
+  "homepage": "https://github.com/lemma-work/lemma-platform",
+  "items": [
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-ui",
+      "type": "registry:item",
+      "title": "Lemma UI",
+      "description": "Lemma-owned Base UI + Tailwind primitives used by the Lemma registry blocks.",
+      "dependencies": [
+        "@base-ui/react",
+        "class-variance-authority",
+        "clsx",
+        "tailwind-merge",
+        "lucide-react"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-ui/components/ui/alert-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/alert-dialog.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/badge.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/badge.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/breadcrumb.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/breadcrumb.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/button.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/button.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/card.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/card.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/checkbox.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/checkbox.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/dialog.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/dialog.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/dropdown-menu.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/dropdown-menu.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/input.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/input.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/label.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/label.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/popover.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/popover.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/select.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/select.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/separator.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/separator.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/sheet.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/sheet.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/skeleton.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/skeleton.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/table.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/table.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/tabs.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/tabs.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/textarea.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/textarea.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/components/ui/tooltip.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/ui/tooltip.tsx"
+        },
+        {
+          "path": "registry/default/lemma-ui/lib/utils.ts",
+          "type": "registry:lib",
+          "target": "components/lemma/lib/utils.ts"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-assistant-experience",
+      "type": "registry:block",
+      "title": "Lemma Agent Conversation Experience",
+      "description": "A stock agent conversation experience UI powered by useAssistantController from lemma-sdk/react.",
+      "dependencies": [
+        "lemma-sdk",
+        "react-markdown",
+        "remark-gfm",
+        "clsx",
+        "tailwind-merge",
+        "radix-ui",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-assistant-experience/components/assistant-types.ts",
+          "type": "registry:component",
+          "target": "components/lemma/assistant/assistant-types.ts"
+        },
+        {
+          "path": "registry/default/lemma-assistant-experience/components/assistant-chrome.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/assistant/assistant-chrome.tsx"
+        },
+        {
+          "path": "registry/default/lemma-assistant-experience/components/assistant-experience.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/assistant/assistant-experience.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-records-view",
+      "type": "registry:block",
+      "title": "Lemma Records View",
+      "description": "A business-grade records workspace with grid, list, kanban, Linear-style, calendar, timeline, and matrix views, triage/issues/CRM/docs presets, inline editing, filter builder, detail sheet/page routing, and schema-aware create form. For operators, not admins.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-records-view/components/records-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/records-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-display-utils.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-display-utils.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/records-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-quick-actions.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-quick-actions.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-editable-cell.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-editable-cell.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-filter-builder.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-filter-builder.tsx"
+        },
+        {
+          "path": "registry/default/lemma-record-form/components/record-form-fields.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/record-form-fields.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-detail.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-detail.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-detail-sheet.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-detail-sheet.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-list-view.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-list-view.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-grouped-view.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-grouped-view.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-consolidated-views.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-consolidated-views.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-form-sheet.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-form-sheet.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/lemma-records-view.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-records-view.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/styles/lemma-records-view.css",
+          "type": "registry:file",
+          "target": "styles/lemma-records-view.css"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-global-search",
+      "type": "registry:block",
+      "title": "Lemma Global Search",
+      "description": "A command-bar style global search across configured record tables and file search results, with progressive source loading, configurable result actions, lean appearance controls, and agent-name handoff.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-global-search/components/lemma-global-search.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-global-search.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-breadcrumbs",
+      "type": "registry:block",
+      "title": "Lemma Breadcrumbs",
+      "description": "Workspace breadcrumbs for route, record, and file paths with truncation, icons, helper builders, and shared appearance controls.",
+      "dependencies": [
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-breadcrumbs/components/lemma-breadcrumbs.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-breadcrumbs.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-file-browser",
+      "type": "registry:block",
+      "title": "Lemma File Browser",
+      "description": "A datastore file workspace with folder navigation, breadcrumbs, search, upload, rename, move, folder creation, picker actions, link flows, and delete handling.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-file-browser/components/lemma-file-browser.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-file-browser.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-document-workspace",
+      "type": "registry:block",
+      "title": "Lemma Document Workspace",
+      "description": "The canonical Lemma private/pod file workspace for create, read, edit, preview, publish-to-pod, and download flows across structured documents, text, images, PDFs, converted HTML, metadata, comments/activity hooks, and agent handoff context.",
+      "dependencies": [
+        "lemma-sdk",
+        "prosekit",
+        "marked",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-document-workspace/components/lemma-document-workspace.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-document-workspace.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-markdown-editor",
+      "type": "registry:block",
+      "title": "Lemma Markdown Editor",
+      "description": "A basic markdown write/preview/split editor for notes, comments, specs, and interim document fields while the richer document system evolves.",
+      "dependencies": [
+        "lucide-react",
+        "react-markdown",
+        "remark-gfm",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-markdown-editor/components/lemma-markdown-editor.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-markdown-editor.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-members",
+      "type": "registry:block",
+      "title": "Lemma Members",
+      "description": "Pod member primitives plus a full members workspace for listing pod members, editing roles, removing access, and adding organization members into a pod.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-members/components/lemma-members.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-members.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-record-form",
+      "type": "registry:block",
+      "title": "Lemma Record Form",
+      "description": "A schema-aware record form with searchable FK inputs, enum/type-aware controls, conditional field visibility, and inline/modal/sheet layouts. Supports direct or function-backed submissions.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-record-form/components/record-form-fields.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/record-form-fields.tsx"
+        },
+        {
+          "path": "registry/default/lemma-record-form/components/lemma-record-form.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-record-form.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-insights",
+      "type": "registry:block",
+      "title": "Lemma Insights",
+      "description": "Dashboard-style stat cards and charts driven by table queries or function outputs. Supports count/sum/avg stat cards and bar/line/area/pie/funnel charts. Built on recharts.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "recharts"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-insights/components/lemma-insights.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-insights.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-activity-feed",
+      "type": "registry:block",
+      "title": "Lemma Activity Feed",
+      "description": "A unified audit feed that merges record changes, workflow events, and comments from multiple tables into a single timeline with date grouping, event-type icons, and relative timestamps.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-activity-feed/components/activity-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/activity-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-activity-feed/components/activity-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/activity-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-activity-feed/components/lemma-activity-feed.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-activity-feed.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-user-menu",
+      "type": "registry:block",
+      "title": "Lemma User Menu",
+      "description": "A user avatar with initials fallback and dropdown menu for app headers, showing user info, configurable menu items, online indicator, and sign-out action.",
+      "dependencies": [
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-user-menu/components/lemma-user-menu.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-user-menu.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-notification-bell",
+      "type": "registry:block",
+      "title": "Lemma Notification Bell",
+      "description": "A notification bell icon button with a badge showing unread count and a popover listing recent notifications with mark-as-read support.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-notification-bell/components/lemma-notification-bell.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-notification-bell.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-workflow-runner",
+      "type": "registry:block",
+      "title": "Lemma Workflow Runner",
+      "description": "A visual workflow run viewer backed by native Lemma workflow run APIs, with step timeline, status badges, progress indicators, and manual start support.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-workflow-runner/components/workflow-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/workflow-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-workflow-runner/components/workflow-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/workflow-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-workflow-runner/components/lemma-workflow-runner.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-workflow-runner.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-action-surface",
+      "type": "registry:block",
+      "title": "Lemma Action Surface",
+      "description": "A first-class long-running action launcher for direct actions, functions, workflows, and agents with button, line, and panel variants plus inspectable progress surfaces.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-action-surface/components/lemma-action-surface.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-action-surface.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-comments",
+      "type": "registry:block",
+      "title": "Lemma Comments",
+      "description": "A record-scoped comment thread with author avatars, relative timestamps, inline reply input, and function-aware comment creation. For collaborative record discussion.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-comments/components/comments-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/comments-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-comments/components/comments-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/comments-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-comments/components/lemma-comments.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-comments.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-detail-panel",
+      "type": "registry:block",
+      "title": "Lemma Detail Panel",
+      "description": "A canonical record detail wrapper that shares the same detail internals as lemma-records-view, while adding standalone loading, empty, error, and action orchestration for operator desks.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-records-view/components/records-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/records-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-display-utils.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-display-utils.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/records-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-quick-actions.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-quick-actions.tsx"
+        },
+        {
+          "path": "registry/default/lemma-record-form/components/record-form-fields.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/record-form-fields.tsx"
+        },
+        {
+          "path": "registry/default/lemma-records-view/components/records-detail.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/records-detail.tsx"
+        },
+        {
+          "path": "registry/default/lemma-detail-panel/components/lemma-detail-panel.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-detail-panel.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-status-flow",
+      "type": "registry:block",
+      "title": "Lemma Status Flow",
+      "description": "A visual status lifecycle primitive for interactive transitions, read-only status display, and tracker-style progress steps across issue trackers, hiring pipelines, and approval workflows.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-status-flow/components/status-flow-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/status-flow-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-status-flow/components/status-flow-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/status-flow-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-status-flow/components/lemma-status-flow.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-status-flow.tsx"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "lemma-page-tree",
+      "type": "registry:block",
+      "title": "Lemma Page Tree",
+      "description": "A hierarchical sidebar for doc-heavy apps backed by the pod file tree, with collapsible folders, selection highlighting, inline document creation, and an optional legacy record-wrapper mode.",
+      "dependencies": [
+        "lemma-sdk",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ],
+      "registryDependencies": [
+        "lemma-ui"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lemma-page-tree/components/page-tree-enum-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/page-tree-enum-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-page-tree/components/page-tree-style-utils.ts",
+          "type": "registry:component",
+          "target": "components/lemma/page-tree-style-utils.ts"
+        },
+        {
+          "path": "registry/default/lemma-page-tree/components/lemma-page-tree.tsx",
+          "type": "registry:component",
+          "target": "components/lemma/lemma-page-tree.tsx"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+"""Framework-agnostic domain errors."""
+
+
+class DomainError(Exception):
+    """Base class for domain/application errors.
+
+    Domain errors are raised from services/domain logic and mapped to transport
+    concerns (e.g. HTTP status codes) at the API boundary.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "DOMAIN_ERROR",
+        status_code: int = 400,
+        details: object | None = None,
+    ):
+        super().__init__(message)
+        self.message = message
+        self.code = code
+        self.status_code = status_code
+        self.details = details
+
+    def __str__(self) -> str:
+        return self.message
+
+
+class BadRequestError(DomainError):
+    """A malformed request the client can fix (bad page token, unparseable id).
+
+    Raised at the transport boundary for value-parsing failures that would
+    otherwise surface as a bare ``ValueError`` (→ 500). Auto-translates to 400
+    via the global handler, so controllers don't need to catch and re-raise.
+    """
+
+    def __init__(
+        self,
+        message: str = "Bad request",
+        *,
+        code: str = "BAD_REQUEST",
+        details: object | None = None,
+    ):
+        super().__init__(message, code=code, status_code=400, details=details)

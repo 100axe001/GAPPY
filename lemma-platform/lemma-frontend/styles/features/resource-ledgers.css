@@ -1,0 +1,290 @@
+.lemma-index-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0 0.625rem;
+}
+
+.lemma-index-tabs.lemma-index-tabs-left {
+  justify-content: flex-start;
+}
+
+.lemma-index-tab {
+  display: inline-flex;
+  height: 1.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-md);
+  padding-inline: 0.5rem;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
+}
+
+.lemma-index-tab:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.lemma-index-tab[data-active="true"] {
+  background: var(--chip-bg);
+  color: var(--text-primary);
+}
+
+.lemma-index-tab-count {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.lemma-header-tabs {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.lemma-header-tab {
+  height: 2rem;
+  border-radius: 0;
+  border-color: transparent !important;
+  border-bottom: 2px solid transparent !important;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  box-shadow: none;
+}
+
+.lemma-header-tab:hover {
+  color: var(--text-primary);
+}
+
+.lemma-header-tab[data-state="active"] {
+  border-bottom-color: var(--action-primary) !important;
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.pod-header-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pod-header-stepper-connector {
+  width: 1.75rem;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.pod-header-step {
+  display: inline-flex;
+  height: 1.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-md);
+  padding-inline: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.pod-header-step[data-state="active"] {
+  background: var(--row-bg);
+  color: var(--text-primary);
+}
+
+.pod-header-step[data-state="complete"] {
+  color: var(--text-secondary);
+}
+
+.pod-header-step-index {
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+}
+
+.pod-header-step[data-state="active"] .pod-header-step-index {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--text-on-brand);
+}
+
+.pod-header-step[data-state="complete"] .pod-header-step-index {
+  border-color: var(--text-secondary);
+}
+
+.resource-index-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 30%, transparent);
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-xs);
+  padding: 1rem;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.resource-index-card[data-featured="true"] {
+  border-color: color-mix(in srgb, var(--brand-primary) 18%, var(--border-subtle));
+}
+
+.resource-index-card:hover,
+.resource-index-card:focus-within {
+  border-color: var(--border-default);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+}
+
+.resource-index-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.resource-index-grid > .resource-index-card {
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 30%, transparent);
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+}
+
+.resource-index-grid > .resource-index-card:first-child {
+  border-top-color: color-mix(in srgb, var(--border-subtle) 30%, transparent);
+}
+
+.resource-index-grid > .resource-index-card:hover,
+.resource-index-grid > .resource-index-card:focus-within {
+  border-color: var(--border-default);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (min-width: 768px) {
+  .resource-index-grid.resource-index-grid-md-2 > .resource-index-card:nth-child(2) {
+    border-top-color: color-mix(in srgb, var(--border-subtle) 30%, transparent);
+  }
+
+  .resource-index-grid.resource-index-grid-md-2 > .resource-index-card:nth-child(odd) {
+    border-right: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .resource-index-grid.resource-index-grid-xl-3 > .resource-index-card:nth-child(3) {
+    border-top-color: color-mix(in srgb, var(--border-subtle) 30%, transparent);
+  }
+
+  .resource-index-grid.resource-index-grid-xl-3 > .resource-index-card:nth-child(odd) {
+    border-right: 0;
+  }
+
+  .resource-index-grid.resource-index-grid-xl-3 > .resource-index-card:nth-child(3n + 1),
+  .resource-index-grid.resource-index-grid-xl-3 > .resource-index-card:nth-child(3n + 2) {
+    border-right: 0;
+  }
+}
+
+/* Reflow index grids to the *surface* width, overriding the viewport-based
+   Tailwind column classes. The two-class selectors outrank Tailwind's single
+   `md:`/`xl:` utilities, so when the assistant docks and the surface narrows the
+   cards drop columns instead of being clipped — even on a wide monitor. */
+@container pod-surface (max-width: 940px) {
+  .resource-index-grid.resource-index-grid-xl-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container pod-surface (max-width: 620px) {
+  .resource-index-grid.resource-index-grid-md-2,
+  .resource-index-grid.resource-index-grid-xl-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* App cards — a compact accent row. The accent is per-app (see
+   lib/app/app-accent.ts) and derives every shade from one semantic token via
+   color-mix, so it adapts to light/dark automatically. */
+.app-tile {
+  --app-accent: var(--action-primary);
+}
+.app-tile[data-accent="brand"] { --app-accent: var(--action-primary); }
+.app-tile[data-accent="intelligence"] { --app-accent: var(--intelligence); }
+.app-tile[data-accent="collaboration"] { --app-accent: var(--collaboration); }
+.app-tile[data-accent="info"] { --app-accent: var(--state-info); }
+.app-tile[data-accent="success"] { --app-accent: var(--state-success); }
+.app-tile[data-accent="delight"] { --app-accent: var(--delight); }
+
+/* Faint accent wash across the whole card so tiles stay visually distinct
+   without a large cover hero. */
+.resource-index-card.app-tile {
+  background: color-mix(in srgb, var(--app-accent) 6%, var(--surface-1));
+}
+
+.app-icon {
+  background: color-mix(in srgb, var(--app-accent) 22%, var(--surface-1));
+  color: color-mix(in srgb, var(--app-accent) 72%, var(--text-primary));
+  border: 0.5px solid color-mix(in srgb, var(--app-accent) 28%, var(--border-subtle));
+}
+
+/* Recipes — accent tiles + preview strips. Accents derive from semantic tokens
+   via color-mix, so they adapt to light/dark automatically. */
+.recipe-icon-tile {
+  --recipe-accent: var(--intelligence);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid color-mix(in srgb, var(--recipe-accent) 26%, var(--border-subtle));
+  background: color-mix(in srgb, var(--recipe-accent) 14%, var(--surface-1));
+  color: color-mix(in srgb, var(--recipe-accent) 72%, var(--text-primary));
+}
+.recipe-icon-tile[data-accent="success"] { --recipe-accent: var(--state-success); }
+.recipe-icon-tile[data-accent="info"] { --recipe-accent: var(--state-info); }
+.recipe-icon-tile[data-accent="delight"] { --recipe-accent: var(--delight); }
+.recipe-icon-tile[data-accent="brand"] { --recipe-accent: var(--action-primary); }
+.recipe-icon-tile[data-accent="intelligence"] { --recipe-accent: var(--intelligence); }
+.recipe-icon-tile[data-accent="collaboration"] { --recipe-accent: var(--collaboration); }
+
+.recipe-preview {
+  --recipe-accent: var(--intelligence);
+  background: color-mix(in srgb, var(--recipe-accent) 12%, var(--surface-1));
+  border-bottom: 0.5px solid color-mix(in srgb, var(--recipe-accent) 20%, var(--border-subtle));
+}
+.recipe-preview[data-accent="success"] { --recipe-accent: var(--state-success); }
+.recipe-preview[data-accent="info"] { --recipe-accent: var(--state-info); }
+.recipe-preview[data-accent="delight"] { --recipe-accent: var(--delight); }
+.recipe-preview[data-accent="brand"] { --recipe-accent: var(--action-primary); }
+.recipe-preview[data-accent="intelligence"] { --recipe-accent: var(--intelligence); }
+.recipe-preview[data-accent="collaboration"] { --recipe-accent: var(--collaboration); }
+.recipe-preview-bar { background: color-mix(in srgb, var(--recipe-accent) 65%, transparent); }
+.recipe-preview-line { background: color-mix(in srgb, var(--recipe-accent) 34%, transparent); }
+
+/* Recipe detail hero — faint accent wash, same token-based accents. */
+.recipe-hero {
+  --recipe-accent: var(--intelligence);
+  border: 0.5px solid color-mix(in srgb, var(--recipe-accent) 24%, var(--border-subtle));
+  background: color-mix(in srgb, var(--recipe-accent) 8%, var(--surface-1));
+}
+.recipe-hero[data-accent="success"] { --recipe-accent: var(--state-success); }
+.recipe-hero[data-accent="info"] { --recipe-accent: var(--state-info); }
+.recipe-hero[data-accent="delight"] { --recipe-accent: var(--delight); }
+.recipe-hero[data-accent="brand"] { --recipe-accent: var(--action-primary); }
+.recipe-hero[data-accent="intelligence"] { --recipe-accent: var(--intelligence); }
+.recipe-hero[data-accent="collaboration"] { --recipe-accent: var(--collaboration); }

@@ -1,0 +1,41 @@
+[project]
+name = "lemma-stack"
+version = "0.1.0"
+description = "Installer and management tool for a fully-local Lemma stack"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12.5",
+    "rich>=13.9.4",
+    "tomlkit>=0.13.0",
+    "packaging>=24.0",
+]
+
+[project.scripts]
+lemma-stack = "lemma_stack.app:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "ruff>=0.9.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["lemma_stack*"]
+
+[tool.setuptools.package-data]
+lemma_stack = ["data/**"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "install_experience: Docker-based cross-platform install tests (slow, need Docker for some)",
+]

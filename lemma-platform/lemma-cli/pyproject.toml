@@ -1,0 +1,129 @@
+[project]
+name = "lemma-terminal"
+description = "Lemma CLI and terminal UI — build and operate Lemma pods, and install Lemma skills into your coding agent (Claude Code, Codex, OpenCode)."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dynamic = ["version"]
+authors = [{ name = "Lemma" }]
+keywords = [
+  "lemma",
+  "cli",
+  "agents",
+  "pods",
+  "ai",
+  "skills",
+  "claude-code",
+  "codex",
+  "opencode",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Utilities",
+]
+dependencies = [
+  # Track the SDK released alongside this CLI (mono-version). The floor must be
+  # >= the version that has the endpoints the current commands use, so a fresh
+  # `uv tool install` upgrades an already-installed older lemma-sdk. The release
+  # workflow rewrites this to the release version on every tagged build.
+  "lemma-sdk>=0.5.3",
+  "click>=8.3.0",
+  "typer>=0.12.5",
+  "rich>=13.9.4",
+  "textual>=8.0",
+  "websockets>=14.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lemma-work/lemma-platform"
+Repository = "https://github.com/lemma-work/lemma-platform"
+Documentation = "https://github.com/lemma-work/lemma-platform/tree/main/lemma-cli"
+Issues = "https://github.com/lemma-work/lemma-platform/issues"
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-asyncio",
+  "textual-dev",
+  "ruff",
+  # e2e test infra: the e2e suite spins up the real backend (subprocess uvicorn
+  # + docker postgres/redis/supertokens) and drives the CLI against it over TCP.
+  # httpx provisions test users/orgs/pods over HTTP; psycopg truncates the
+  # postgres app tables between tests for isolation. Both are test-only — never
+  # shipped in the published wheel.
+  "httpx>=0.27",
+  "psycopg[binary]>=3.1",
+]
+
+[project.scripts]
+lemma = "lemma_cli.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.dynamic]
+# Single source of truth for the version (also read at runtime by
+# cli_core/versions.py and `lemma --version`). Bump it in lemma_cli/__init__.py.
+version = { attr = "lemma_cli.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lemma_cli*"]
+exclude = ["build*", "dist*", "*.egg-info*", "docs*"]
+
+[tool.setuptools.package-data]
+lemma_cli = [
+    "tui/*.tcss",
+    "cli_core/assets/*.html",
+    "cli_core/assets/app_vite_template/*",
+    "cli_core/assets/app_vite_template/**/*",
+    "cli_core/assets/app_vite_template/gitignore",
+    # Vendored agent skills (synced from repo-root lemma-skills/ by
+    # scripts/sync_cli_skills.py before build; grafted into the sdist via
+    # MANIFEST.in). Ship inside the wheel so `lemma skills install` works with
+    # no repo checkout present.
+    "skills/**",
+    "skills/**/*",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Discover tests under tests/. Unit tests live at the top level; e2e tests live
+# under tests/e2e/ and are auto-marked `e2e` by the e2e conftest's
+# pytest_collection_modifyitems hook. Run them separately:
+#   uv run pytest -m "not e2e"   # fast unit suite
+#   uv run pytest -m e2e         # docker-backed end-to-end suite
+testpaths = ["tests"]
+markers = [
+  "unit: Fast in-process unit tests with fake SDK clients (no network, no docker).",
+  "e2e: End-to-end tests that spin up the real backend + docker infra and drive the CLI over TCP.",
+]
+# --import-mode=importlib avoids module-name collisions between the top-level
+#   test_* modules and the tests/e2e package (which uses relative imports).
+# --strict-markers: every marker must be declared above, catching typos early.
+# Keep captured output clean; surface logs only on failures (-s to debug).
+addopts = "-ra --import-mode=importlib --strict-markers"
+
+[tool.uv.sources]
+# Resolve lemma-sdk from the sibling checkout without requiring it to be
+# published. Non-editable on purpose: editable installs add a per-import finder
+# hook and skip bytecode precompilation, which makes `lemma` startup multiple
+# seconds slower in the agentbox runtime. For live SDK editing during dev,
+# install it editable explicitly: `uv pip install -e ../lemma-python`.
+#
+# This only affects local uv resolution — the published wheel pins lemma-sdk
+# from PyPI (see [project.dependencies]).
+lemma-sdk = { path = "../lemma-python" }

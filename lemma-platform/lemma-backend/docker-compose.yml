@@ -1,0 +1,88 @@
+services:
+  db:
+    # pg15 to stay data-compatible with existing volumes; 0.8.3 carries the
+    # CVE-2026-3172 (parallel HNSW build) fix and is needed for halfvec indexes.
+    image: docker.io/pgvector/pgvector:0.8.3-pg15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lemma
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      # Host ports are stack-driven (set by scripts/devstack) so the OSS and
+      # cloud dev stacks publish different ports and run side by side; default to
+      # standard ports for a plain `docker compose up`.
+      - "${DEV_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./installer/postgres-init:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: docker.io/redis/redis-stack:7.2.0-v19
+    restart: unless-stopped
+    ports:
+      - "${DEV_REDIS_PORT:-6379}:6379"
+      - "${DEV_REDIS_UI_PORT:-8001}:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  supertokens:
+    image: docker.io/supertokens/supertokens-postgresql:11.1.0
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${DEV_SUPERTOKENS_PORT:-3567}:3567"
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://postgres:postgres@db:5432/supertokens
+    restart: unless-stopped
+    healthcheck:
+      test: >
+        bash -c 'exec 3<>/dev/tcp/127.0.0.1/3567 && echo -e "GET /hello HTTP/1.1\r\nhost: 127.0.0.1:3567\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | grep "Hello"'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kreuzberg:
+    image: ghcr.io/kreuzberg-dev/kreuzberg:4.9.9
+    ports:
+      - "${DEV_KREUZBERG_PORT:-8002}:8000"
+    restart: unless-stopped
+    # Resource bounds so document extraction (OCR/layout is CPU+RAM heavy) can't
+    # run the host out of memory. Each Kreuzberg extraction carries a ~1.5GB
+    # model+runtime floor; the backend caps its own concurrency (2) to keep the
+    # multiplied peak under 4GB. CPUs are held at 2 on purpose: more cores let
+    # Kreuzberg parallelize pages internally, which multiplies peak RAM and
+    # OOM-kills a 4GB instance (measured: 4 CPU OOMs, 2 CPU peaks ~3.9GB). Raise
+    # mem_limit before raising cpus.
+    mem_limit: ${DEV_KREUZBERG_MEM_LIMIT:-4g}
+    cpus: ${DEV_KREUZBERG_CPUS:-2}
+    environment:
+      # Reject oversized uploads at the edge (backend also guards before sending);
+      # the request-body cap sits just above it for multipart overhead.
+      KREUZBERG_MAX_UPLOAD_SIZE_MB: "${DEV_KREUZBERG_MAX_UPLOAD_SIZE_MB:-25}"
+      KREUZBERG_MAX_REQUEST_BODY_BYTES: "${DEV_KREUZBERG_MAX_REQUEST_BODY_BYTES:-31457280}"
+      # Persist the ONNX/Hugging Face model + extraction-result cache across
+      # restarts so the service never re-downloads or re-warms models on boot.
+      KREUZBERG_CACHE_DIR: /app/.kreuzberg
+      HF_HOME: /app/.kreuzberg/huggingface
+      RUST_LOG: "${DEV_KREUZBERG_LOG_LEVEL:-info}"
+    volumes:
+      - kreuzberg_cache:/app/.kreuzberg
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Models can load on first boot; don't fail health while warming.
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  kreuzberg_cache:

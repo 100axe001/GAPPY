@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+import pytest
+
+from app.modules.datastore.api.record_query import (
+    parse_record_filters,
+    parse_record_sorts,
+)
+from app.modules.datastore.domain.errors import DatastoreValidationError
+
+
+def test_parse_record_filters_accepts_json_filter_clauses():
+    result = parse_record_filters(
+        [
+            '{"field":"email_thread_id","op":"eq","value":"codex-smoke-no-match-5"}',
+            '{"field":"priority","op":"ne","value":"low"}',
+            '{"field":"amount","op":"gte","value":100}',
+            '{"field":"archived","op":"eq","value":false}',
+        ],
+    )
+
+    assert result == [
+        ("email_thread_id", "eq", "codex-smoke-no-match-5"),
+        ("priority", "ne", "low"),
+        ("amount", "gte", 100),
+        ("archived", "eq", False),
+    ]
+
+
+def test_parse_record_filters_rejects_bad_json():
+    with pytest.raises(DatastoreValidationError, match="Invalid filter parameter"):
+        parse_record_filters(["{not json"])
+
+
+def test_parse_record_filters_rejects_shorthand():
+    with pytest.raises(DatastoreValidationError, match="Invalid filter parameter"):
+        parse_record_filters(["status = 'new'"])
+
+
+def test_parse_record_sorts_accepts_json_then_none():
+    assert parse_record_sorts(
+        ['{"field":"created_at","direction":"desc"}']
+    ) == [("created_at", "desc")]
+    assert parse_record_sorts(None) is None
+
+
+def test_parse_record_sorts_accepts_json_sort_clauses():
+    assert parse_record_sorts(
+        [
+            '{"field":"updated_at","direction":"desc"}',
+            '{"field":"priority","direction":"asc"}',
+            '{"field":"name"}',
+        ]
+    ) == [
+        ("updated_at", "desc"),
+        ("priority", "asc"),
+        ("name", "asc"),
+    ]
+
+
+def test_parse_record_sorts_rejects_bad_json():
+    with pytest.raises(DatastoreValidationError, match="Invalid sort parameter"):
+        parse_record_sorts(["{bad"])

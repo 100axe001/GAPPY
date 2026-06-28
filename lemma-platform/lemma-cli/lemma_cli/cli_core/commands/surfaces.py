@@ -1,0 +1,308 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import typer
+
+from ...cli_app.enums import SURFACE_PLATFORMS
+from ..confirm import confirm_destructive
+from ..io import emit
+from ..payload import read_json
+from ..sdk import pod_client
+from ..state import run_with_client, state_from_ctx
+
+app = typer.Typer(
+    help="Agent surface commands for Slack, Teams, Telegram, WhatsApp, Gmail, and Outlook."
+)
+
+# Single source for the platform help shown on every platform argument.
+_PLATFORM_HELP = ", ".join(SURFACE_PLATFORMS) + "."
+
+
+@app.command("init")
+def init_surface(
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    root: Path | None = typer.Option(
+        None, "--root", help="Bundle root (default: enclosing pod.json or cwd)."
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing files."),
+) -> None:
+    """Scaffold a surface bundle file for a platform. Set the agent + account, then import."""
+    from ...cli_app.scaffold import ScaffoldError, init_resource, report
+
+    try:
+        result = init_resource("surface", platform, root=root, force=force, platform=platform)
+    except ScaffoldError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    report(result, next_hint="set default_agent_name + account_id, then `lemma pods import .`")
+
+
+@app.command("schema")
+def schema_surface() -> None:
+    """Print the JSONC example/shape for a surface bundle file."""
+    from ._authoring import print_resource_schema
+
+    print_resource_schema("surface")
+
+
+def _clean_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _surface_payload(
+    base: dict[str, Any],
+    *,
+    credential_mode: str | None = None,
+    default_agent_name: str | None = None,
+    account_id: str | None = None,
+    allowed_domains: list[str] | None = None,
+    allowed_email_addresses: list[str] | None = None,
+) -> dict[str, Any]:
+    """Build a SurfaceUpsertRequest body. Platform rides in the path, not here."""
+    payload = dict(base)
+    if credential_mode is not None:
+        payload["credential_mode"] = credential_mode.upper()
+    payload.update(
+        _clean_payload(
+            {
+                "default_agent_name": default_agent_name,
+                "account_id": account_id,
+            }
+        )
+    )
+
+    config = dict(payload.get("config") or {})
+    identity = dict(config.get("identity") or {})
+    if allowed_domains:
+        identity["allowed_domains"] = [value.lower() for value in allowed_domains]
+    if allowed_email_addresses:
+        identity["allowed_email_addresses"] = [
+            value.lower() for value in allowed_email_addresses
+        ]
+    if identity:
+        config["identity"] = identity
+    if config:
+        payload["config"] = config
+    return payload
+
+
+@app.command("list")
+def list_surfaces(
+    ctx: typer.Context,
+    pod: str | None = typer.Option(None, "--pod"),
+    limit: int = typer.Option(100, "--limit"),
+) -> None:
+    """List agent surfaces in the pod."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.list(limit=limit),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("get")
+def get_surface(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+) -> None:
+    """Show a surface by platform name."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.get(platform),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("upsert")
+def upsert_surface(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+    default_agent_name: str | None = typer.Option(
+        None, "--agent", "--agent-name", help="Default agent that handles messages."
+    ),
+    account_id: str | None = typer.Option(None, "--account", "--account-id"),
+    credential_mode: str | None = typer.Option(
+        None, "--credential-mode", help="SYSTEM or CUSTOM."
+    ),
+    enabled: bool | None = typer.Option(None, "--enabled/--disabled"),
+    allowed_domains: list[str] | None = typer.Option(None, "--allowed-domain"),
+    allowed_email_addresses: list[str] | None = typer.Option(None, "--allowed-email"),
+    data: str | None = typer.Option(None, "--data", "-d", help="Raw JSON payload."),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        exists=True,
+        dir_okay=False,
+        readable=True,
+    ),
+) -> None:
+    """Create or update the surface for a platform (one surface per platform per pod).
+
+    A surface is unique per pod+platform, so this single command covers create,
+    config/agent/account edits, and enable/disable. Only the fields you pass are
+    applied to an existing surface.
+    """
+    state = state_from_ctx(ctx)
+    payload = _surface_payload(
+        read_json(data, file, required=False),
+        credential_mode=credential_mode,
+        default_agent_name=default_agent_name,
+        account_id=account_id,
+        allowed_domains=allowed_domains,
+        allowed_email_addresses=allowed_email_addresses,
+    )
+    if enabled is not None:
+        payload["is_enabled"] = enabled
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.upsert(
+            platform.upper(), payload
+        ),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("channels")
+def update_channels(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+    channel_id: str | None = typer.Option(None, "--channel-id"),
+    channel_name: str | None = typer.Option(None, "--channel-name"),
+    agent_name: str | None = typer.Option(
+        None, "--agent", "--agent-name", help="Agent that handles this channel."
+    ),
+    data: str | None = typer.Option(
+        None,
+        "--data",
+        "-d",
+        help='Raw JSON channel routes, e.g. [{"channel_id": ..., "agent_name": ...}].',
+    ),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        exists=True,
+        dir_okay=False,
+        readable=True,
+    ),
+) -> None:
+    """Replace ALL channel routes on a surface (Slack/Teams only)."""
+    state = state_from_ctx(ctx)
+    raw = read_json(data, file, required=False)
+    if isinstance(raw, dict) and "channels" in raw:
+        channels = raw["channels"]
+    elif isinstance(raw, list):
+        channels = raw
+    else:
+        channels = [
+            _clean_payload(
+                {
+                    "channel_id": channel_id,
+                    "channel_name": channel_name,
+                    "agent_name": agent_name,
+                }
+            )
+        ]
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.upsert(
+            platform.upper(), {"config": {"channels": channels}}
+        ),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("available-channels")
+def available_channels(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+) -> None:
+    """List the channels/groups this surface can be routed to (Slack/Teams)."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.channels(platform),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("enable")
+def enable_surface(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+) -> None:
+    """Enable a surface (temporarily off vs. delete, which removes it entirely)."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.upsert(
+            platform.upper(), {"is_enabled": True}
+        ),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("disable")
+def disable_surface(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+) -> None:
+    """Disable a surface without deleting it (keeps config + frees nothing)."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.upsert(
+            platform.upper(), {"is_enabled": False}
+        ),
+    )
+    if result is not None:
+        emit(state, result)
+
+
+@app.command("delete")
+def delete_surface(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+    yes: bool = typer.Option(False, "--yes", "-y"),
+) -> None:
+    """Delete a surface entirely, freeing its account for use in another pod."""
+    state = state_from_ctx(ctx)
+    confirm_destructive(f"Delete {platform} surface?", yes)
+    run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.delete(platform),
+    )
+    emit(state, {"deleted": platform})
+
+
+@app.command("setup")
+def setup_status(
+    ctx: typer.Context,
+    platform: str = typer.Argument(..., help=_PLATFORM_HELP),
+    pod: str | None = typer.Option(None, "--pod"),
+) -> None:
+    """Show setup status, webhook info, admin consent, and the platform checklist."""
+    state = state_from_ctx(ctx)
+    result = run_with_client(
+        ctx,
+        lambda client, s: pod_client(client, s, pod).surfaces.setup(platform),
+    )
+    if result is not None:
+        emit(state, result)

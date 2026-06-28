@@ -1,0 +1,1106 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import {
+    Bot,
+    CalendarClock,
+    ChevronsUpDown,
+    Database,
+    FolderOpen,
+    Home,
+    LogOut,
+    MessageCircle,
+    PanelLeftClose,
+    PanelsTopLeft,
+    Plus,
+    Plug,
+    ShieldCheck,
+    Table2,
+    User,
+    Workflow,
+} from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+
+import { useAIAssistant } from '@/components/ai/ai-assistant-context';
+import { Logo } from '@/components/brand/logo';
+import { FileTypeIcon } from '@/components/documents/file-type-icon';
+import { usePodLayoutOptional } from '@/components/pod/pod-layout-context';
+import { ProductIcon, type ProductIconTone } from '@/components/pod/product-icon';
+import { SidebarEmptyState } from '@/components/shared/empty-state';
+import { ResourceIcon } from '@/components/shared/resource-icon';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useApp } from '@/components/app/app-context';
+import { usePodAccess } from '@/lib/hooks/use-pod-access';
+import { cn } from '@/lib/utils';
+import { useAgents } from '@/lib/hooks/use-agents';
+import {
+    useDatastoreFiles,
+    useTables,
+} from '@/lib/hooks/use-datastores';
+import { useFlows } from '@/lib/hooks/use-flows';
+import { useAccessiblePods, type AccessiblePodGroup } from '@/lib/hooks/use-pods';
+import { useProfile } from '@/lib/hooks/use-user';
+import { getAppRecipeExamples } from '@/lib/recipes/recipes';
+import type { DatastoreFile } from '@/lib/types';
+import { getConversationStatusView } from '@/lib/utils/conversations';
+
+interface WorkspaceSidebarProps {
+    podId: string;
+    podName?: string;
+    podIconUrl?: string | null;
+    /**
+     * When provided, the nav's own collapse control is rendered in the header.
+     * This is the single nav toggle on desktop (paired with the rail's expand
+     * button); the drawer passes this to close itself.
+     */
+    onCollapse?: () => void;
+}
+
+const DATASTORE_NAME = 'default';
+const PERSONAL_FILES_ROOT = '/me';
+const PERSONAL_FILES_LABEL = 'Personal files';
+
+type AssistantCreationKind = 'agent' | 'app' | 'workflow' | 'table';
+
+const ASSISTANT_CREATION_COPY: Record<AssistantCreationKind, {
+    title: string;
+    description: string;
+    prompt: string;
+    placeholder: string;
+    examples: string[];
+    action: string;
+    manualLabel?: string;
+    tone: ProductIconTone;
+}> = {
+    agent: {
+        title: 'New agent',
+        description: 'Describe the job. Lemma will create the agent and show what changed.',
+        prompt: 'What should this agent do?',
+        placeholder: 'Review new support tickets, detect urgency, and draft the next response',
+        examples: [
+            'Triage support tickets and draft replies',
+            'Watch deals and flag risky follow-ups',
+        ],
+        action: 'Create with assistant',
+        manualLabel: 'Create manually',
+        tone: 'agents',
+    },
+    app: {
+        title: 'New app',
+        description: 'Describe the operator surface. Lemma will create the app from the conversation.',
+        prompt: 'What should this app help people do?',
+        placeholder: 'Review renewals, see account risk, and approve the next customer action',
+        examples: getAppRecipeExamples(3),
+        action: 'Create app with assistant',
+        tone: 'apps',
+    },
+    workflow: {
+        title: 'New workflow',
+        description: 'Describe the loop. Lemma will create a practical first version.',
+        prompt: 'What should this workflow run?',
+        placeholder: 'When a customer record changes, check risk and prepare follow-up',
+        examples: [
+            'Run a risk check when a customer changes',
+            'Summarize new records every morning',
+        ],
+        action: 'Create with assistant',
+        manualLabel: 'Create manually',
+        tone: 'workflows',
+    },
+    table: {
+        title: 'New table',
+        description: 'Describe the data. Lemma will design the schema and create the table.',
+        prompt: 'What should this table store?',
+        placeholder: 'Project milestones with owner, date, risk, latest update, and next action',
+        examples: [
+            'Track project milestones and owners',
+            'Store customer follow-ups and next actions',
+        ],
+        action: 'Create with assistant',
+        manualLabel: 'Create manually',
+        tone: 'tables',
+    },
+};
+
+function getAssistantCreationInstructions(kind: AssistantCreationKind): string {
+    const resourceLabel = kind === 'table' ? 'datastore table' : kind === 'app' ? 'app app' : kind;
+    const action = kind === 'agent'
+        ? 'Create a useful agent with clear instructions, appropriate resource access, and a name that fits this pod.'
+        : kind === 'app'
+            ? 'Start by understanding the operator workflow, then create a minimal useful Lemma app app with the right data, pages, and interactions.'
+            : kind === 'workflow'
+            ? 'Create a useful workflow with a clear trigger or manual start, practical steps, and a name that fits this pod.'
+            : 'Create a useful datastore table with a practical schema, readable field names, and a name that fits this pod.';
+
+    return [
+        `You are helping create a Lemma ${resourceLabel} in the current pod.`,
+        'Use the user-visible message as the product intent. Do not repeat these hidden instructions back to the user.',
+        'Inspect relevant pod context and existing resources before creating anything.',
+        action,
+        'Ask at most one concise clarification only if creating the resource would otherwise be risky or materially wrong.',
+        'After creation, summarize what was created and display or link the resource when possible.',
+    ].join('\n');
+}
+
+function toDisplayLabel(value: string | null | undefined) {
+    const cleaned = (value || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (!cleaned) return 'Untitled';
+
+    return cleaned
+        .split(' ')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
+
+function isFolder(file: DatastoreFile): boolean {
+    return file.kind === 'FOLDER';
+}
+
+function getFilePath(file: DatastoreFile): string {
+    return file.path || file.id;
+}
+
+function isPersonalRootPath(path: string | null | undefined): boolean {
+    if (!path) return false;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return normalized === PERSONAL_FILES_ROOT;
+}
+
+function getDocEntryLabel(file: DatastoreFile): string {
+    return isFolder(file) && isPersonalRootPath(getFilePath(file)) ? PERSONAL_FILES_LABEL : file.name;
+}
+
+export function WorkspaceSidebar({ podId, podName, podIconUrl, onCollapse }: WorkspaceSidebarProps) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const searchParamsString = searchParams.toString();
+    const [assistantCreationKind, setAssistantCreationKind] = useState<AssistantCreationKind | null>(null);
+    const [assistantCreationPrompt, setAssistantCreationPrompt] = useState('');
+    const { pages = [] } = useApp();
+    const { data: podsData } = useAccessiblePods();
+    const { data: profile } = useProfile();
+    const podAccess = usePodAccess(podId);
+    const canUseConversations = podAccess.canAccessRoute('conversations');
+    const canWriteConversations = podAccess.can('conversation.write');
+    const canUseAgents = podAccess.canAccessRoute('agents');
+    const canUseWorkflows = podAccess.canAccessRoute('workflows');
+    const canUseSchedules = podAccess.canAccessRoute('schedules');
+    const canUseConnectors = podAccess.canAccessRoute('connectors');
+    const canUseData = podAccess.canAccessRoute('data');
+    const canUseDocs = podAccess.canAccessRoute('files');
+    const canUseApps = podAccess.canAccessRoute('apps');
+    const canUseSurfaces = podAccess.canAccessRoute('surfaces');
+    const canUseSettings = podAccess.canAccessRoute('settings');
+    const canCreateAgents = podAccess.can('agent.create');
+    const canCreateApps = podAccess.can('app.create');
+    const canCreateWorkflows = podAccess.can('workflow.create');
+    const canCreateSchedules = podAccess.can('schedule.create');
+    const canCreateTables = podAccess.can('datastore.table.create');
+    const { data: agentsData } = useAgents(canUseAgents ? podId : undefined);
+    const { data: tablesData } = useTables(canUseData ? podId : undefined);
+    const { data: flowsData } = useFlows(canUseWorkflows ? podId : undefined);
+    const {
+        conversations,
+        activeConversationId,
+        selectConversation,
+        openAssistant,
+        clearMessages,
+        isLoadingConversations,
+    } = useAIAssistant();
+    // On focus routes the assistant can't dock, so conversation actions open the
+    // full conversation page instead of silently toggling a panel that won't show.
+    const isFocusRoute = usePodLayoutOptional()?.isFocusRoute ?? false;
+
+    const pods = podsData?.items || [];
+    const podGroups = podsData?.groups || [];
+    const showPodOrganizationLabels = podsData?.hasMultipleOrganizations;
+    const agents = agentsData?.items || [];
+    const tables = tablesData?.items || [];
+    const flows = flowsData || [];
+    const initials = profile?.first_name && profile?.last_name
+        ? `${profile.first_name[0]}${profile.last_name[0]}`
+        : profile?.email?.[0].toUpperCase() || 'U';
+    const assistantCreationCopy = assistantCreationKind ? ASSISTANT_CREATION_COPY[assistantCreationKind] : null;
+
+    const basePath = `/pod/${podId}`;
+    const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+    const isDocsRoute = isActive(`${basePath}/files`);
+    const isAgentsRoute = isActive(`${basePath}/ai`) || isActive(`${basePath}/agents`);
+    const isWorkflowsRoute = isActive(`${basePath}/flows`);
+    const isDataRoute = isActive(`${basePath}/data`) || isActive(`${basePath}/datastores`);
+    const isAppsRoute = isActive(`${basePath}/app`);
+    const isConnectorsRoute = isActive(`${basePath}/connectors`);
+    const isKitsRoute = isActive(`${basePath}/kits`) || isActive(`${basePath}/recipes`);
+    const isSchedulesRoute = isActive(`${basePath}/schedules`);
+    const isConversationRoute = pathname === `${basePath}/conversations` || pathname.startsWith(`${basePath}/conversations/`);
+    const isPodHome = pathname === basePath || pathname === `${basePath}/`;
+    const hasRouteWorktree = isDocsRoute || isAgentsRoute || isWorkflowsRoute || isDataRoute || isAppsRoute || isConnectorsRoute || isKitsRoute || isSchedulesRoute;
+    const canShowCreateMenu = canWriteConversations || canCreateAgents || canCreateApps || canCreateWorkflows || canCreateSchedules || canCreateTables;
+    const visibleConversations = canUseConversations ? conversations.slice(0, hasRouteWorktree ? 3 : 7) : [];
+    const docsFolderPath = isDocsRoute ? searchParams.get('folder') : null;
+    const docsDirectoryPath = isDocsRoute ? (docsFolderPath || '/') : '/';
+    const selectedDocPath = isDocsRoute ? searchParams.get('file') : null;
+    const { data: routeDocsFilesData, isLoading: isLoadingRouteDocsFiles } = useDatastoreFiles(
+        podId,
+        canUseDocs && isDocsRoute ? DATASTORE_NAME : undefined,
+        {
+            directory_path: docsDirectoryPath,
+            limit: 200,
+        }
+    );
+
+    const docsEntries = useMemo(() => {
+        return [...(routeDocsFilesData?.items || [])].sort((left, right) => {
+            if (isFolder(left) !== isFolder(right)) return isFolder(left) ? -1 : 1;
+            return left.name.localeCompare(right.name);
+        });
+    }, [routeDocsFilesData?.items]);
+
+    const updateQuery = (
+        updates: Record<string, string | null>,
+        options: { history?: 'push' | 'replace'; targetPath?: string } = {}
+    ) => {
+        const nextParams = new URLSearchParams(searchParamsString);
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === '') nextParams.delete(key);
+            else nextParams.set(key, value);
+        });
+        const nextQuery = nextParams.toString();
+        const nextUrl = `${options.targetPath || pathname}${nextQuery ? `?${nextQuery}` : ''}`;
+        if (options.history === 'replace') router.replace(nextUrl, { scroll: false });
+        else router.push(nextUrl, { scroll: false });
+    };
+
+    const rails = [
+        {
+            href: `${basePath}/app/pages`,
+            label: 'Apps',
+            icon: PanelsTopLeft,
+            tone: 'apps' as const,
+            count: pages.length,
+            active: isActive(`${basePath}/app`),
+            visible: canUseApps,
+        },
+        {
+            href: `${basePath}/ai`,
+            label: 'Agents',
+            icon: Bot,
+            tone: 'agents' as const,
+            count: agents.length,
+            active: isActive(`${basePath}/ai`) || isActive(`${basePath}/agents`),
+            visible: canUseAgents,
+        },
+        {
+            href: `${basePath}/flows`,
+            label: 'Workflows',
+            icon: Workflow,
+            tone: 'workflows' as const,
+            count: flows.length,
+            active: isActive(`${basePath}/flows`),
+            visible: canUseWorkflows,
+        },
+        {
+            href: `${basePath}/schedules`,
+            label: 'Schedules',
+            icon: CalendarClock,
+            tone: 'schedules' as const,
+            active: isActive(`${basePath}/schedules`),
+            visible: canUseSchedules,
+        },
+        {
+            href: `${basePath}/connectors`,
+            label: 'Connectors',
+            icon: Plug,
+            tone: 'connectors' as const,
+            active: isConnectorsRoute,
+            visible: canUseConnectors,
+        },
+        {
+            href: `${basePath}/data`,
+            label: 'Data',
+            icon: Database,
+            tone: 'data' as const,
+            count: tables.length,
+            active: isActive(`${basePath}/data`) || isActive(`${basePath}/datastores`),
+            visible: canUseData,
+        },
+        {
+            href: `${basePath}/files`,
+            label: 'Docs',
+            icon: FolderOpen,
+            tone: 'docs' as const,
+            active: isActive(`${basePath}/files`),
+            visible: canUseDocs,
+        },
+        {
+            href: `${basePath}/surfaces`,
+            label: 'Surfaces',
+            icon: MessageCircle,
+            tone: 'surfaces' as const,
+            active: isActive(`${basePath}/surfaces`) || isActive(`${basePath}/channels`),
+            visible: canUseSurfaces,
+        },
+        {
+            href: `${basePath}/settings`,
+            label: 'Settings',
+            icon: ShieldCheck,
+            tone: 'settings' as const,
+            active: isActive(`${basePath}/settings`),
+            visible: canUseSettings,
+        },
+    ].filter((rail) => rail.visible);
+
+    // Route to the dedicated /logout screen so the user gets immediate
+    // "Signing you out…" feedback while the session is torn down.
+    const handleLogout = () => {
+        router.push('/logout');
+    };
+
+    const openConversation = (conversationId: string) => {
+        if (isConversationRoute || isPodHome || isFocusRoute) {
+            router.push(`${basePath}/conversations/${encodeURIComponent(conversationId)}`);
+            return;
+        }
+        selectConversation(conversationId);
+        openAssistant();
+    };
+
+    const startConversation = () => {
+        if (!canWriteConversations) return;
+        if (isConversationRoute || isPodHome || isFocusRoute) {
+            router.push(`${basePath}/conversations/new`);
+            return;
+        }
+        clearMessages();
+        openAssistant();
+    };
+
+    const startFullPageConversation = () => {
+        if (!canWriteConversations) return;
+        router.push(`${basePath}/conversations/new`);
+    };
+
+    const getManualCreationHref = (kind: AssistantCreationKind) => {
+        if (kind === 'agent') return `${basePath}/agents/new`;
+        if (kind === 'workflow') return `${basePath}/flows/new`;
+        if (kind === 'app') return `${basePath}/conversations/new`;
+        return `${basePath}/data?create=table`;
+    };
+
+    const openAssistantCreation = (kind: AssistantCreationKind) => {
+        setAssistantCreationKind(kind);
+        setAssistantCreationPrompt('');
+    };
+
+    const closeAssistantCreation = () => {
+        setAssistantCreationKind(null);
+        setAssistantCreationPrompt('');
+    };
+
+    const startAssistantCreation = () => {
+        if (!assistantCreationKind || !canWriteConversations) return;
+        const prompt = assistantCreationPrompt.trim();
+        if (!prompt) return;
+
+        const params = new URLSearchParams();
+        params.set('assistantMessage', prompt);
+        params.set('conversationInstructions', getAssistantCreationInstructions(assistantCreationKind));
+        params.set('conversationMetadata', JSON.stringify({
+            source: 'sidebar_new_menu',
+            intent: 'create_resource',
+            resource_type: assistantCreationKind,
+        }));
+
+        closeAssistantCreation();
+        router.push(`${basePath}/conversations/new?${params.toString()}`);
+    };
+
+    const startManualCreation = () => {
+        if (!assistantCreationKind) return;
+        const href = getManualCreationHref(assistantCreationKind);
+        closeAssistantCreation();
+        router.push(href);
+    };
+
+    const openDocsFolder = (folderPath: string | null) => {
+        updateQuery(
+            {
+                namespace: null,
+                folder: folderPath,
+                file: null,
+            },
+            { targetPath: `${basePath}/files` }
+        );
+    };
+
+    const openDocFile = (filePath: string) => {
+        updateQuery({ namespace: null, file: filePath }, { targetPath: `${basePath}/files` });
+    };
+
+    const renderRouteWorktree = () => {
+        if (isDocsRoute && canUseDocs) {
+            return (
+                <RouteWorktree>
+                    <div className="space-y-0.5">
+                        {docsFolderPath ? (
+                            <button
+                                type="button"
+                                onClick={() => openDocsFolder(null)}
+                                className="lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring text-[var(--text-tertiary)]"
+                            >
+                                <ProductIcon tone="folders" size="xs" />
+                                Back to Files
+                            </button>
+                        ) : null}
+                        {isLoadingRouteDocsFiles ? (
+                            <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)]">Loading files</div>
+                        ) : docsEntries.length === 0 ? (
+                            <SidebarEmptyState>
+                                No files here yet.
+                            </SidebarEmptyState>
+                        ) : (
+                            docsEntries.map((entry) => {
+                                const folder = isFolder(entry);
+                                const path = getFilePath(entry);
+                                const label = getDocEntryLabel(entry);
+                                return (
+                                    <button
+                                        key={entry.id}
+                                        type="button"
+                                        title={path}
+                                        onClick={() => folder ? openDocsFolder(path) : openDocFile(path)}
+                                        data-active={selectedDocPath === path ? 'true' : undefined}
+                                        className="lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring"
+                                    >
+                                        {folder ? <ProductIcon tone="folders" size="xs" /> : <FileTypeIcon filename={label} size="sm" />}
+                                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </RouteWorktree>
+            );
+        }
+
+        if (isAgentsRoute && canUseAgents) {
+            return (
+                <RouteWorktree>
+                    {agents.map((agent) => (
+                        <WorktreeLink
+                            key={agent.name || agent.id}
+                            href={`${basePath}/agents/${encodeURIComponent(agent.name || agent.id)}`}
+                            label={toDisplayLabel(agent.name || agent.id)}
+                            icon={Bot}
+                            tone="agents"
+                            active={pathname.endsWith(`/agents/${encodeURIComponent(agent.name || agent.id)}`)}
+                        />
+                    ))}
+                    {agents.length === 0 ? <WorktreeEmpty label="No agents yet" /> : null}
+                </RouteWorktree>
+            );
+        }
+
+        if (isWorkflowsRoute && canUseWorkflows) {
+            return (
+                <RouteWorktree>
+                    {flows.map((flow) => (
+                        <WorktreeLink
+                            key={flow.name || flow.id}
+                            href={`${basePath}/flows/${encodeURIComponent(flow.name || flow.id)}`}
+                            label={toDisplayLabel(flow.name || flow.id)}
+                            icon={Workflow}
+                            tone="workflows"
+                            active={pathname.endsWith(`/flows/${encodeURIComponent(flow.name || flow.id)}`)}
+                        />
+                    ))}
+                    {flows.length === 0 ? <WorktreeEmpty label="No workflows yet" /> : null}
+                </RouteWorktree>
+            );
+        }
+
+        if (isDataRoute && canUseData) {
+            return (
+                <RouteWorktree>
+                    {tables.map((table) => (
+                        <WorktreeLink
+                            key={table.name}
+                            href={`${basePath}/data?tab=${encodeURIComponent(table.name)}`}
+                            label={toDisplayLabel(table.name)}
+                            icon={Table2}
+                            tone="tables"
+                            active={searchParams.get('tab') === table.name}
+                        />
+                    ))}
+                    {tables.length === 0 ? <WorktreeEmpty label="No tables yet" /> : null}
+                </RouteWorktree>
+            );
+        }
+
+        if (isAppsRoute && canUseApps) {
+            return (
+                <RouteWorktree>
+                    {pages.map((page) => (
+                        <WorktreeLink
+                            key={page.slug}
+                            href={`${basePath}/app/view?page=${encodeURIComponent(page.slug)}`}
+                            label={toDisplayLabel(page.title || page.slug)}
+                            icon={PanelsTopLeft}
+                            tone="apps"
+                            active={searchParams.get('page') === page.slug}
+                        />
+                    ))}
+                    {pages.length === 0 ? <WorktreeEmpty label="No app pages yet" /> : null}
+                </RouteWorktree>
+            );
+        }
+
+        if (isConnectorsRoute && canUseConnectors) {
+            return null;
+        }
+
+        if (isKitsRoute) {
+            return (
+                <RouteWorktree>
+                    <WorktreeEmpty label="Preview a kit, then install or customize it." />
+                </RouteWorktree>
+            );
+        }
+
+        if (isSchedulesRoute && canUseSchedules) {
+            return (
+                <RouteWorktree>
+                    <WorktreeEmpty label="Schedule list is on the main page" />
+                </RouteWorktree>
+            );
+        }
+
+        return null;
+    };
+
+    const routeWorktree = renderRouteWorktree();
+
+    return (
+        <aside className="flex h-full w-full shrink-0 flex-col overflow-hidden bg-[var(--pod-shell-bg)] text-[var(--text-secondary)]">
+            <div className="flex h-14 shrink-0 items-center gap-1.5 border-b border-[color:color-mix(in_srgb,var(--border-subtle)_32%,transparent)] px-3">
+                <div className="min-w-0 flex-1 rounded-md border border-[color:color-mix(in_srgb,var(--border-subtle)_46%,transparent)] bg-transparent p-0.5">
+                    <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                            <button
+                                type="button"
+                                className="workspace-sidebar-trigger-button custom-focus-ring flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-[var(--text-primary)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--surface-2)_48%,transparent)]"
+                                aria-label="Switch pod"
+                            >
+                                <ResourceIcon
+                                    iconUrl={podIconUrl}
+                                    alt={`${podName || 'Current pod'} icon`}
+                                    label={podName || 'Current pod'}
+                                    className="h-7 w-7 shrink-0 rounded-md border-[color:color-mix(in_srgb,var(--border-subtle)_58%,transparent)] bg-transparent text-[var(--text-tertiary)]"
+                                    fallback={
+                                        <span className="lemma-pod-badge">
+                                            {(podName || 'Pod')
+                                                .trim()
+                                                .split(/\s+/)
+                                                .slice(0, 2)
+                                                .map((part) => part.charAt(0).toUpperCase())
+                                                .join('') || 'P'}
+                                        </span>
+                                    }
+                                />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium leading-5 text-[var(--text-primary)]">
+                                        {podName || 'Current pod'}
+                                    </span>
+                                    <span className="block truncate text-xs leading-4 text-[var(--text-tertiary)]">
+                                        Lemma Pod
+                                    </span>
+                                </span>
+                                <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]" />
+                            </button>
+                        </DropdownMenu.Trigger>
+                        <PodSwitcherMenu
+                            pods={pods}
+                            podGroups={podGroups}
+                            showOrganizationLabels={showPodOrganizationLabels}
+                            podId={podId}
+                            router={router}
+                            side="bottom"
+                        />
+                    </DropdownMenu.Root>
+                </div>
+                {onCollapse ? (
+                    <button
+                        type="button"
+                        onClick={onCollapse}
+                        className="lemma-shell-icon-button custom-focus-ring h-9 w-9 shrink-0 self-center text-[var(--text-tertiary)]"
+                        aria-label="Collapse sidebar"
+                        title="Collapse sidebar"
+                    >
+                        <PanelLeftClose className="h-4 w-4" strokeWidth={1.8} />
+                    </button>
+                ) : null}
+            </div>
+            <div className="px-3 pb-3 pt-3">
+                <Link
+                    href={basePath}
+                    data-active={isPodHome ? 'true' : undefined}
+                    aria-current={isPodHome ? 'page' : undefined}
+                    className="lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring mb-0.5 font-medium text-[var(--text-secondary)]"
+                >
+                    <Home className="h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">Home</span>
+                </Link>
+                {canShowCreateMenu ? (
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu.Root>
+                            <DropdownMenu.Trigger asChild>
+                                <button
+                                    type="button"
+                                    className="lemma-sidebar-row lemma-sidebar-row-sm lemma-sidebar-row-inline custom-focus-ring flex-1 font-medium text-[var(--text-secondary)]"
+                                >
+                                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="min-w-0 flex-1 truncate">New</span>
+                                </button>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                                <DropdownMenu.Content
+                                    align="start"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    className="surface-panel z-50 w-56 p-1 shadow-[var(--shadow-lg)]"
+                                >
+                                    {canWriteConversations ? (
+                                        <DropdownMenu.Item
+                                            onSelect={startFullPageConversation}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="conversation" size="xs" />
+                                            New conversation
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canCreateAgents ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => openAssistantCreation('agent')}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="agents" size="xs" />
+                                            New agent
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canCreateApps ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => openAssistantCreation('app')}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="apps" size="xs" />
+                                            New app
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canCreateWorkflows ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => openAssistantCreation('workflow')}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="workflows" size="xs" />
+                                            New workflow
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canCreateSchedules ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => router.push(`${basePath}/schedules/new`)}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="schedules" size="xs" />
+                                            New schedule
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canCreateTables ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => openAssistantCreation('table')}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="tables" size="xs" />
+                                            New table
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                    {canWriteConversations ? (
+                                        <DropdownMenu.Item
+                                            onSelect={() => router.push(`${basePath}/recipes`)}
+                                            className="lemma-menu-row px-2"
+                                        >
+                                            <ProductIcon tone="apps" size="xs" />
+                                            Browse recipes
+                                        </DropdownMenu.Item>
+                                    ) : null}
+                                </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
+                    </div>
+                ) : null}
+            </div>
+
+            <Dialog open={assistantCreationKind !== null} onOpenChange={(open) => {
+                if (!open) closeAssistantCreation();
+            }}>
+                <DialogContent className="w-[min(560px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden rounded-lg border-[var(--border-subtle)] bg-[var(--card-bg)] p-0 shadow-[var(--shadow-lg)]">
+                    <DialogHeader className="px-5 pb-4 pt-5 pr-12">
+                        <div className="flex items-start gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)]">
+                                <ProductIcon tone={assistantCreationCopy?.tone || 'agents'} size="sm" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium leading-4 text-[var(--text-tertiary)]">
+                                    {assistantCreationCopy?.title || 'Create with assistant'}
+                                </p>
+                                <DialogTitle className="mt-1 text-xl leading-7">
+                                    {assistantCreationCopy?.prompt || 'What should this do?'}
+                                </DialogTitle>
+                                <DialogDescription className="mt-1.5 max-w-[34rem] text-sm leading-6 text-[var(--text-tertiary)]">
+                                    {assistantCreationCopy?.description}
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="space-y-3.5 px-5 pb-5">
+                        <label className="block">
+                            <span className="sr-only">{assistantCreationCopy?.prompt}</span>
+                            <Textarea
+                                value={assistantCreationPrompt}
+                                onChange={(event) => setAssistantCreationPrompt(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                                        event.preventDefault();
+                                        startAssistantCreation();
+                                    }
+                                }}
+                                placeholder={assistantCreationCopy?.placeholder}
+                                className="form-field-control-flat min-h-[132px] resize-none rounded-lg px-3.5 py-3 text-sm leading-6"
+                                disableFocusRing
+                                autoFocus
+                            />
+                        </label>
+                        {assistantCreationCopy?.examples.length ? (
+                            <div className="flex flex-wrap gap-1.5">
+                                {assistantCreationCopy.examples.map((example) => (
+                                    <button
+                                        key={example}
+                                        type="button"
+                                        onClick={() => setAssistantCreationPrompt(example)}
+                                        className="workspace-sidebar-suggestion-chip-button custom-focus-ring rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] px-2 py-1 text-xs leading-4 text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                                    >
+                                        {example}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
+                    </div>
+                    <DialogFooter className="items-center justify-between gap-2 border-t border-[color:color-mix(in_srgb,var(--border-subtle)_64%,transparent)] px-5 py-3.5 sm:flex-row sm:justify-between">
+                        {assistantCreationCopy?.manualLabel ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-[var(--text-tertiary)]"
+                                onClick={startManualCreation}
+                            >
+                                {assistantCreationCopy.manualLabel}
+                            </Button>
+                        ) : (
+                            <span aria-hidden="true" />
+                        )}
+                        <Button
+                            type="button"
+                            size="sm"
+                            className="px-3.5"
+                            onClick={startAssistantCreation}
+                            disabled={!canWriteConversations || !assistantCreationPrompt.trim()}
+                        >
+                            {assistantCreationCopy?.action || 'Create with assistant'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-3">
+                {routeWorktree}
+
+                <div className={cn('space-y-px pb-3', routeWorktree && 'mt-4 border-t border-[var(--border-subtle)] pt-3')}>
+                    {isLoadingConversations && visibleConversations.length === 0 ? (
+                        <div className="px-2 py-1.5 text-xs text-[var(--text-tertiary)]">Loading conversations</div>
+                    ) : null}
+                    {canWriteConversations ? (
+                        <button
+                            type="button"
+                            onClick={startConversation}
+                            className="lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring font-normal text-[var(--text-tertiary)]"
+                        >
+                            <span className="min-w-0 flex-1 truncate">Start a conversation</span>
+                        </button>
+                    ) : null}
+                    {visibleConversations.map((conversation) => {
+                        const statusView = getConversationStatusView(conversation.status);
+                        const showStatusLabel = statusView.isActive || statusView.isAwaiting || statusView.state === 'failed';
+
+                        return (
+                            <button
+                                key={conversation.id}
+                                type="button"
+                                onClick={() => openConversation(conversation.id)}
+                                data-active={activeConversationId === conversation.id ? 'true' : undefined}
+                                className="lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring font-normal"
+                            >
+                                <span className="min-w-0 flex-1 truncate">{conversation.title || 'Untitled conversation'}</span>
+                                {showStatusLabel ? (
+                                    <span
+                                        className={cn(
+                                            'shrink-0 text-xs',
+                                            statusView.tone === 'live' && 'text-[var(--delight)]',
+                                            statusView.tone === 'warning' && 'text-[var(--state-warning)]',
+                                            statusView.tone === 'danger' && 'text-[var(--state-error)]'
+                                        )}
+                                    >
+                                        {statusView.dotLabel}
+                                    </span>
+                                ) : null}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="shrink-0 border-t border-[color:color-mix(in_srgb,var(--border-subtle)_62%,transparent)] px-3 pb-3 pt-3">
+                <div className="space-y-0.5">
+                    {rails.map((rail) => (
+                        <RailLink key={rail.href} {...rail} />
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 border-t border-[color:color-mix(in_srgb,var(--border-subtle)_62%,transparent)] px-3 pb-3 pt-2">
+                <Link
+                    href="/home"
+                    aria-label="Go to Lemma home"
+                    className="workspace-sidebar-trigger-button custom-focus-ring flex h-9 shrink-0 items-center rounded-lg px-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-2)]"
+                >
+                    <Logo size="xs" variant="mark-wordmark" />
+                </Link>
+                <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                        <button className="workspace-sidebar-trigger-button custom-focus-ring flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 text-left transition-colors hover:bg-[var(--surface-2)]">
+                            <Avatar className="h-7 w-7 border border-[var(--border-subtle)]">
+                                <AvatarFallback className="bg-[var(--surface-2)] text-xs text-[var(--text-secondary)]">
+                                    {profile ? initials : <User className="h-4 w-4" />}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text-primary)]">
+                                {profile?.first_name
+                                    ? `${profile.first_name} ${profile.last_name || ''}`.trim()
+                                    : profile?.email?.split('@')[0] || 'User'}
+                            </span>
+                        </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                            align="start"
+                            side="top"
+                            sideOffset={8}
+                            className="surface-panel z-50 w-56 py-1 shadow-[var(--shadow-lg)]"
+                        >
+                            <div className="px-3 py-2">
+                                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                                    {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : profile?.email}
+                                </p>
+                                <p className="truncate text-xs text-[var(--text-tertiary)]">{profile?.email}</p>
+                            </div>
+                            <DropdownMenu.Separator className="my-1 h-px bg-[var(--border-subtle)]" />
+                            <DropdownMenu.Item asChild>
+                                <Link
+                                    href="/profile"
+                                    className="lemma-menu-row px-3"
+                                >
+                                    <User className="h-4 w-4" />
+                                    Profile settings
+                                </Link>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Separator className="my-1 h-px bg-[var(--border-subtle)]" />
+                            <DropdownMenu.Item
+                                onSelect={handleLogout}
+                                className="hover-state-error focus-state-error flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[var(--state-error)] outline-none transition-colors"
+                            >
+                                <LogOut className="h-4 w-4" />
+                                Log out
+                            </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+                <ThemeToggle variant="icon" />
+            </div>
+        </aside>
+    );
+}
+
+function PodSwitcherMenu({
+    pods,
+    podGroups,
+    showOrganizationLabels,
+    podId,
+    router,
+    side,
+}: {
+    pods: Array<{ id: string; name: string }>;
+    podGroups: AccessiblePodGroup[];
+    showOrganizationLabels?: boolean;
+    podId: string;
+    router: ReturnType<typeof useRouter>;
+    side: 'top' | 'bottom';
+}) {
+    return (
+        <DropdownMenu.Portal>
+            <DropdownMenu.Content
+                align="start"
+                side={side}
+                sideOffset={8}
+                className="surface-panel z-50 w-72 p-1 shadow-[var(--shadow-lg)]"
+            >
+                <div className="px-2 py-1.5 type-eyebrow">
+                    Pods
+                </div>
+                {pods.length === 0 ? (
+                    <div className="px-2 py-2 text-sm text-[var(--text-tertiary)]">No pods yet.</div>
+                ) : null}
+                {showOrganizationLabels ? (
+                    podGroups.map((group) => group.pods.length > 0 ? (
+                        <div key={group.organization.id}>
+                            <div className="px-2 pt-2 pb-1 text-xs font-medium uppercase tracking-normal text-[var(--text-tertiary)]">
+                                {group.organization.name}
+                            </div>
+                            {group.pods.map((pod) => (
+                                <PodSwitcherMenuItem key={pod.id} pod={pod} podId={podId} />
+                            ))}
+                        </div>
+                    ) : null)
+                ) : (
+                    pods.map((pod) => (
+                        <PodSwitcherMenuItem key={pod.id} pod={pod} podId={podId} />
+                    ))
+                )}
+                <DropdownMenu.Separator className="my-1 h-px bg-[var(--border-subtle)]" />
+                <DropdownMenu.Item
+                    onSelect={() => router.push('/create-pod')}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--delight)] outline-none transition-colors hover:bg-[var(--delight-soft)]"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                    New pod
+                </DropdownMenu.Item>
+            </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+    );
+}
+
+function PodSwitcherMenuItem({
+    pod,
+    podId,
+}: {
+    pod: { id: string; name: string };
+    podId: string;
+}) {
+    return (
+        <DropdownMenu.Item asChild>
+            <Link
+                href={`/pod/${pod.id}`}
+                className="lemma-menu-row lemma-menu-row-between"
+            >
+                <span className="truncate">{toDisplayLabel(pod.name)}</span>
+                {pod.id === podId ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--delight)]" />
+                ) : null}
+            </Link>
+        </DropdownMenu.Item>
+    );
+}
+
+function RouteWorktree({
+    children,
+}: {
+    children: ReactNode;
+}) {
+    return (
+        <div>
+            <div className="space-y-2">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function WorktreeLink(props: {
+    href: string;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    tone?: ProductIconTone;
+    active?: boolean;
+}) {
+    const { href, label, tone = 'docs', active } = props;
+
+    return (
+        <Link
+            href={href}
+            data-tone={tone}
+            data-active={active ? 'true' : undefined}
+            className="lemma-product-nav-item lemma-sidebar-row lemma-sidebar-row-sm custom-focus-ring group"
+        >
+            <ProductIcon tone={tone} size="xs" />
+            <span className="min-w-0 flex-1 truncate">{label}</span>
+        </Link>
+    );
+}
+
+function WorktreeEmpty({ label }: { label: string }) {
+    return (
+        <SidebarEmptyState>{label}</SidebarEmptyState>
+    );
+}
+
+function RailLink(props: {
+    href: string;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    tone: ProductIconTone;
+    count?: number;
+    active?: boolean;
+}) {
+    const { href, label, tone, active } = props;
+
+    return (
+        <Link
+            href={href}
+            data-tone={tone}
+            data-active={active ? 'true' : undefined}
+            className="lemma-product-nav-item lemma-sidebar-row lemma-sidebar-row-base custom-focus-ring group font-normal"
+        >
+            <span className="flex min-w-0 items-center gap-3">
+                <ProductIcon tone={tone} size="xs" />
+                <span className="truncate">{label}</span>
+            </span>
+        </Link>
+    );
+}

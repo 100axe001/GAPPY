@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+from uuid import UUID
+
+from sqlalchemy import select
+
+from app.modules.agent_surfaces.domain.ports import SurfacePodMembershipPort
+from app.modules.identity.infrastructure.models.user_models import User
+from app.modules.identity.infrastructure.models.organization_models import (
+    OrganizationMember,
+)
+from app.modules.pod.infrastructure.models.pod_models import PodMember
+
+
+class SqlAlchemySurfaceRoutingResolutionAdapter(SurfacePodMembershipPort):
+    def __init__(self, uow):
+        self.session = uow.session
+
+    async def get_user_pod_ids(self, user_id: UUID) -> list[UUID]:
+        stmt = (
+            select(PodMember.pod_id)
+            .join(
+                OrganizationMember,
+                OrganizationMember.id == PodMember.organization_member_id,
+            )
+            .where(OrganizationMember.user_id == user_id)
+        )
+        result = await self.session.execute(stmt)
+        return [pod_id for pod_id in result.scalars().all()]
+
+    async def get_user_email(self, user_id: UUID) -> str | None:
+        stmt = select(User.email).where(User.id == user_id)
+        return await self.session.scalar(stmt)

@@ -54,6 +54,48 @@ class StudyReview(Base):
     concept = relationship("Item", foreign_keys=[concept_id], backref="study_reviews")
     user = relationship("User", foreign_keys=[user_id], backref="study_reviews")
 
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=False, default="New Chat")
+    tag = Column(String, nullable=True)  # user-assigned label/category
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    user = relationship("User", backref="conversations")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String, nullable=False)  # "user", "assistant", "tool"
+    content = Column(String, nullable=True)
+    # Records which tools were invoked and their results for transparency in the UI
+    tool_calls_json = Column(JSON, default=list)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    conversation = relationship("Conversation", backref="messages")
+
+
+class UserSetting(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    key = Column(String, nullable=False)  # e.g. "llm_provider", "anthropic_api_key"
+    value = Column(String, nullable=True)  # encrypted at rest when marked secret
+    is_secret = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    user = relationship("User", backref="settings")
+
+
 class UserIntegration(Base):
     __tablename__ = "user_integrations"
 

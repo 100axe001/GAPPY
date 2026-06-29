@@ -15,6 +15,9 @@ from .security import encrypt_data, decrypt_data
 from .integrations.registry import registry
 from .integrations import service as int_service
 from .integrations.routing import route_and_execute_query
+from . import settings_service, chat as chat_engine
+from .integrations.web_search import web_search, WebSearchError
+from .integrations import email_adapter
 
 
 app = FastAPI(title="LifeOS API", version="1.0.0")
@@ -845,6 +848,132 @@ async def assistant_query(
 ):
     res = await route_and_execute_query(db, user_id=current_user.id, query=req.query)
     return res
+
+# -- Chat / Conversations --
+
+@app.get("/api/chat/conversations", response_model=List[schemas.ConversationResponse])
+async def list_conversations(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return await crud.list_conversations(db, current_user.id)
+
+@app.post("/api/chat/conversations", response_model=schemas.ConversationResponse)
+async def create_conversation(
+    conv_in: schemas.ConversationCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return await crud.create_conversation(db, current_user.id, title=conv_in.title, tag=conv_in.tag)
+
+@app.patch("/api/chat/conversations/{conv_id}", response_model=schemas.ConversationResponse)
+async def update_conversation(
+    conv_id: int,
+    conv_in: schemas.ConversationUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    conv = await crud.update_conversation(db, conv_id, current_user.id,
+                                          title=conv_in.title, tag=conv_in.tag)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conv
+
+@app.delete("/api/chat/conversations/{conv_id}")
+async def delete_conversation(
+    conv_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    ok = await crud.delete_conversation(db, conv_id, current_user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"detail": "Conversation deleted"}
+
+@app.get("/api/chat/conversations/{conv_id}/messages", response_model=List[schemas.MessageResponse])
+async def get_conversation_messages(
+    conv_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    conv = await crud.get_conversation(db, conv_id, current_user.id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return await crud.get_messages(db, conv_id)
+
+@app.post("/api/chat/conversations/{conv_id}/send", response_model=schemas.ChatSendResponse)
+async def send_chat_message(
+    conv_id: int,
+    req: schemas.ChatSendRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    conv = await crud.get_conversation(db, conv_id, current_user.id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="Empty message")
+
+    settings = await settings_service.get_resolved_settings(db, current_user.id)
+    user_row, assistant_row, tools_used = await chat_engine.send_message(
+        db, current_user.id, conv, req.message, settings
+    )
+    return schemas.ChatSendResponse(
+        conversation_id=conv.id,
+        user_message=user_row,
+        assistant_message=assistant_row,
+        tools_used=tools_used
+    )
+
+# -- Settings --
+
+@app.get("/api/settings", response_model=schemas.SettingsResponse)
+async def get_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    values = await settings_service.get_masked_settings(db, current_user.id)
+    return schemas.SettingsResponse(values=values)
+
+@app.put("/api/settings", response_model=schemas.SettingsResponse)
+async def update_settings(
+    req: schemas.SettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    values = await settings_service.update_settings(db, current_user.id, req.values)
+    return schemas.SettingsResponse(values=values)
+
+@app.post("/api/settings/test-email")
+async def settings_test_email(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    settings = await settings_service.get_resolved_settings(db, current_user.id)
+    ok = await email_adapter.test_email(settings)
+    return {"status": "healthy" if ok else "unhealthy"}
+
+# -- Web Search --
+
+@app.post("/api/web-search", response_model=schemas.WebSearchResponse)
+async def run_web_search(
+    req: schemas.WebSearchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    settings = await settings_service.get_resolved_settings(db, current_user.id)
+    try:
+        res = await web_search(req.query, settings, max_results=req.max_results or 6)
+    except WebSearchError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Web search failed: {e}")
+    return schemas.WebSearchResponse(
+        query=req.query,
+        provider=res.get("provider", "unknown"),
+        answer=res.get("answer"),
+        results=[schemas.WebSearchResult(**r) for r in res.get("results", [])]
+    )
 
 # Mount static files at root
 app.mount("/", StaticFiles(directory="frontend", html=True), name="static")

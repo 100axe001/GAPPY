@@ -149,6 +149,36 @@ function setupEventListeners() {
     assistantForm.addEventListener("submit", handleAssistantQuerySubmit);
   }
 
+  // Chat
+  const newChatBtn = document.getElementById("btn-new-chat");
+  if (newChatBtn) newChatBtn.addEventListener("click", () => createConversation());
+  const chatComposer = document.getElementById("chat-composer");
+  if (chatComposer) chatComposer.addEventListener("submit", handleChatSend);
+  const chatInput = document.getElementById("chat-input");
+  if (chatInput) {
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleChatSend(e);
+      }
+    });
+    chatInput.addEventListener("input", autoGrowChatInput);
+  }
+  const chatTitleInput = document.getElementById("chat-title-input");
+  if (chatTitleInput) chatTitleInput.addEventListener("change", () => saveConversationMeta());
+  const chatTagInput = document.getElementById("chat-tag-input");
+  if (chatTagInput) chatTagInput.addEventListener("change", () => saveConversationMeta());
+
+  // Settings
+  const settingsForm = document.getElementById("settings-form");
+  if (settingsForm) settingsForm.addEventListener("submit", handleSaveSettings);
+  const testEmailBtn = document.getElementById("btn-test-email");
+  if (testEmailBtn) testEmailBtn.addEventListener("click", handleTestEmail);
+
+  // Web search
+  const webSearchForm = document.getElementById("web-search-form");
+  if (webSearchForm) webSearchForm.addEventListener("submit", handleWebSearch);
+
   // Modal Closures
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
   document.getElementById("details-modal").addEventListener("click", (e) => {
@@ -284,6 +314,10 @@ function renderDashboard() {
     handleGlobalSearch();
   } else if (currentTab === "integrations") {
     renderIntegrationsView();
+  } else if (currentTab === "chat") {
+    renderChatView();
+  } else if (currentTab === "settings") {
+    renderSettingsView();
   }
 }
 
@@ -2020,6 +2054,354 @@ async function handleAssistantQuerySubmit(e) {
     lucide.createIcons();
   } catch (err) {
     responseBox.innerHTML = `<p style="color: var(--danger);">Query failed: ${err.message}</p>`;
+  }
+}
+
+// ============================================================
+// CHAT
+// ============================================================
+let chatConversations = [];
+let activeConversationId = null;
+let chatSending = false;
+
+function escapeHtml(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/^- (.*)$/gm, "• $1")
+    .replace(/\n/g, "<br>");
+  return html;
+}
+
+async function renderChatView() {
+  await loadConversations();
+  if (chatConversations.length === 0) {
+    activeConversationId = null;
+    renderConversationList();
+    renderMessages([]);
+    setChatComposerEnabled(true); // typing the first message lazily creates a chat
+    return;
+  }
+  if (!activeConversationId || !chatConversations.find(c => c.id === activeConversationId)) {
+    activeConversationId = chatConversations[0].id;
+  }
+  renderConversationList();
+  await selectConversation(activeConversationId);
+}
+
+async function loadConversations() {
+  try {
+    chatConversations = await apiFetch("/api/chat/conversations");
+  } catch (err) {
+    chatConversations = [];
+  }
+}
+
+function renderConversationList() {
+  const list = document.getElementById("chat-conversation-list");
+  if (!list) return;
+  if (chatConversations.length === 0) {
+    list.innerHTML = `<p class="empty-state-text" style="padding:1rem;font-size:0.85rem;">No chats yet. Click + to start.</p>`;
+    return;
+  }
+  list.innerHTML = "";
+  chatConversations.forEach(conv => {
+    const item = document.createElement("div");
+    item.className = "chat-conv-item" + (conv.id === activeConversationId ? " active" : "");
+    item.onclick = () => selectConversation(conv.id);
+    const tagHtml = conv.tag ? `<span class="chat-conv-tag">${escapeHtml(conv.tag)}</span>` : "";
+    item.innerHTML = `
+      <div class="chat-conv-info">
+        <span class="chat-conv-title">${escapeHtml(conv.title)}</span>
+        ${tagHtml}
+      </div>
+      <button class="chat-conv-delete" title="Delete" onclick="event.stopPropagation(); deleteConversation(${conv.id})">
+        <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+      </button>
+    `;
+    list.appendChild(item);
+  });
+  lucide.createIcons();
+}
+
+async function createConversation() {
+  try {
+    const conv = await apiFetch("/api/chat/conversations", "POST", { title: "New Chat" });
+    chatConversations.unshift(conv);
+    activeConversationId = conv.id;
+    renderConversationList();
+    await selectConversation(conv.id);
+    document.getElementById("chat-input").focus();
+  } catch (err) {
+    showToast("Could not create chat: " + err.message, "error");
+  }
+}
+
+async function deleteConversation(id) {
+  if (!confirm("Delete this conversation?")) return;
+  try {
+    await apiFetch(`/api/chat/conversations/${id}`, "DELETE");
+    chatConversations = chatConversations.filter(c => c.id !== id);
+    if (activeConversationId === id) activeConversationId = null;
+    await renderChatView();
+  } catch (err) {
+    showToast("Could not delete: " + err.message, "error");
+  }
+}
+
+async function selectConversation(id) {
+  activeConversationId = id;
+  const conv = chatConversations.find(c => c.id === id);
+  renderConversationList();
+  setChatComposerEnabled(true);
+
+  const titleInput = document.getElementById("chat-title-input");
+  const tagInput = document.getElementById("chat-tag-input");
+  if (conv) {
+    titleInput.value = conv.title || "";
+    tagInput.value = conv.tag || "";
+    titleInput.disabled = false;
+    tagInput.disabled = false;
+  }
+
+  const container = document.getElementById("chat-messages");
+  container.innerHTML = `<p class="loading-indicator">Loading...</p>`;
+  try {
+    const messages = await apiFetch(`/api/chat/conversations/${id}/messages`);
+    renderMessages(messages);
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--danger);">Failed to load messages.</p>`;
+  }
+}
+
+function renderMessages(messages) {
+  const container = document.getElementById("chat-messages");
+  if (!messages || messages.length === 0) {
+    container.innerHTML = `
+      <div class="chat-empty-state">
+        <i data-lucide="message-circle" style="width:32px;height:32px;opacity:0.4;"></i>
+        <p>Start a conversation. I can use your calendar, email, web search, and Second Brain as tools.</p>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+  container.innerHTML = "";
+  messages.forEach(m => appendMessageBubble(m.role, m.content, m.metadata_json));
+  container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
+}
+
+function appendMessageBubble(role, content, meta) {
+  const container = document.getElementById("chat-messages");
+  const emptyState = container.querySelector(".chat-empty-state");
+  if (emptyState) container.innerHTML = "";
+
+  const wrap = document.createElement("div");
+  wrap.className = `chat-bubble-row ${role}`;
+
+  let toolsHtml = "";
+  const toolsUsed = meta && meta.tools_used ? meta.tools_used : [];
+  if (toolsUsed && toolsUsed.length) {
+    toolsHtml = `<div class="chat-tools-used">${toolsUsed.map(t =>
+      `<span class="chat-tool-chip"><i data-lucide="wrench" style="width:10px;height:10px;"></i> ${escapeHtml(t)}</span>`).join("")}</div>`;
+  }
+  let memHtml = "";
+  if (meta && meta.saved_memory) {
+    memHtml = `<div class="chat-memory-note"><i data-lucide="brain" style="width:11px;height:11px;"></i> Remembered: ${escapeHtml(meta.saved_memory.title)}</div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="chat-bubble ${role}">
+      ${toolsHtml}
+      <div class="chat-bubble-text">${formatMarkdown(content)}</div>
+      ${memHtml}
+    </div>`;
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+  return wrap;
+}
+
+function setChatComposerEnabled(enabled) {
+  const input = document.getElementById("chat-input");
+  const btn = document.getElementById("chat-send-btn");
+  if (input) input.disabled = !enabled;
+  if (btn) btn.disabled = !enabled;
+}
+
+function autoGrowChatInput() {
+  const input = document.getElementById("chat-input");
+  if (!input) return;
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 160) + "px";
+}
+
+async function handleChatSend(e) {
+  if (e) e.preventDefault();
+  if (chatSending) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Lazily create a conversation if none active.
+  if (!activeConversationId) {
+    await createConversation();
+    if (!activeConversationId) return;
+  }
+
+  chatSending = true;
+  setChatComposerEnabled(false);
+  input.value = "";
+  autoGrowChatInput();
+
+  appendMessageBubble("user", text, {});
+  const thinking = appendMessageBubble("assistant", "_Thinking..._", {});
+  lucide.createIcons();
+
+  try {
+    const res = await apiFetch(`/api/chat/conversations/${activeConversationId}/send`, "POST", { message: text });
+    thinking.remove();
+    appendMessageBubble("assistant", res.assistant_message.content, res.assistant_message.metadata_json);
+    lucide.createIcons();
+    // Refresh sidebar (title may have auto-updated) and dashboard data.
+    await loadConversations();
+    renderConversationList();
+    const conv = chatConversations.find(c => c.id === activeConversationId);
+    if (conv) document.getElementById("chat-title-input").value = conv.title || "";
+    fetchDashboardData();
+  } catch (err) {
+    thinking.remove();
+    appendMessageBubble("assistant", "⚠️ " + err.message, {});
+  } finally {
+    chatSending = false;
+    setChatComposerEnabled(true);
+    input.focus();
+  }
+}
+
+async function saveConversationMeta() {
+  if (!activeConversationId) return;
+  const title = document.getElementById("chat-title-input").value.trim();
+  const tag = document.getElementById("chat-tag-input").value.trim();
+  try {
+    await apiFetch(`/api/chat/conversations/${activeConversationId}`, "PATCH", {
+      title: title || "New Chat",
+      tag: tag || null
+    });
+    await loadConversations();
+    renderConversationList();
+  } catch (err) {
+    showToast("Could not update chat: " + err.message, "error");
+  }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+async function renderSettingsView() {
+  try {
+    const data = await apiFetch("/api/settings");
+    const values = data.values || {};
+    document.querySelectorAll("[data-key]").forEach(el => {
+      const key = el.getAttribute("data-key");
+      if (el.getAttribute("data-secret")) {
+        el.value = ""; // never populate secrets
+        const flag = document.getElementById("flag-" + key);
+        if (flag) {
+          const isSet = values[key + "_set"];
+          flag.textContent = isSet ? "● saved" : "";
+          flag.className = "setting-flag" + (isSet ? " saved" : "");
+        }
+      } else if (el.getAttribute("data-bool")) {
+        el.checked = String(values[key]).toLowerCase() === "true";
+      } else if (values[key] !== undefined) {
+        el.value = values[key];
+      }
+    });
+    lucide.createIcons();
+  } catch (err) {
+    showToast("Could not load settings: " + err.message, "error");
+  }
+}
+
+async function handleSaveSettings(e) {
+  e.preventDefault();
+  const payload = {};
+  document.querySelectorAll("[data-key]").forEach(el => {
+    const key = el.getAttribute("data-key");
+    if (el.getAttribute("data-bool")) {
+      payload[key] = el.checked ? "true" : "false";
+    } else if (el.getAttribute("data-secret")) {
+      if (el.value.trim()) payload[key] = el.value.trim(); // only send when changed
+    } else {
+      payload[key] = el.value;
+    }
+  });
+  try {
+    await apiFetch("/api/settings", "PUT", { values: payload });
+    showToast("Settings saved.", "success");
+    renderSettingsView();
+  } catch (err) {
+    showToast("Save failed: " + err.message, "error");
+  }
+}
+
+async function handleTestEmail() {
+  const btn = document.getElementById("btn-test-email");
+  btn.disabled = true;
+  btn.textContent = "Testing...";
+  try {
+    // Persist current form values first so the test uses them.
+    await handleSaveSettings({ preventDefault: () => {} });
+    const res = await apiFetch("/api/settings/test-email", "POST");
+    if (res.status === "healthy") showToast("Email connection successful!", "success");
+    else showToast("Email connection failed. Check address & app password.", "error");
+  } catch (err) {
+    showToast("Test failed: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Test Email Connection";
+  }
+}
+
+// ============================================================
+// WEB SEARCH PANE
+// ============================================================
+async function handleWebSearch(e) {
+  e.preventDefault();
+  const input = document.getElementById("web-search-input");
+  const results = document.getElementById("web-search-results");
+  const query = input.value.trim();
+  if (!query) return;
+  results.innerHTML = `<p class="loading-indicator">Searching the web...</p>`;
+  try {
+    const res = await apiFetch("/api/web-search", "POST", { query });
+    let html = "";
+    if (res.answer) {
+      html += `<div class="web-answer-box"><strong>Answer:</strong> ${formatMarkdown(res.answer)}</div>`;
+    }
+    if (!res.results || res.results.length === 0) {
+      html += `<p class="empty-state-text">No results found.</p>`;
+    } else {
+      res.results.forEach(r => {
+        html += `
+          <a class="web-result-card" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">
+            <span class="web-result-title">${escapeHtml(r.title)}</span>
+            <span class="web-result-url">${escapeHtml(r.url)}</span>
+            <span class="web-result-snippet">${escapeHtml(r.snippet)}</span>
+          </a>`;
+      });
+    }
+    html += `<p class="web-search-provider">via ${escapeHtml(res.provider)}</p>`;
+    results.innerHTML = html;
+  } catch (err) {
+    results.innerHTML = `<p style="color:var(--danger);">${escapeHtml(err.message)} — configure web search under Settings.</p>`;
   }
 }
 

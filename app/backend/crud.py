@@ -187,6 +187,100 @@ async def delete_connection(db: AsyncSession, connection_id: int):
         return True
     return False
 
+# -- Conversation / Message Helpers --
+async def create_conversation(db: AsyncSession, user_id: int, title: str = "New Chat", tag: str = None):
+    conv = models.Conversation(user_id=user_id, title=title or "New Chat", tag=tag, metadata_json={})
+    db.add(conv)
+    await db.flush()
+    return conv
+
+async def get_conversation(db: AsyncSession, conv_id: int, user_id: int):
+    result = await db.execute(
+        select(models.Conversation).where(
+            models.Conversation.id == conv_id,
+            models.Conversation.user_id == user_id
+        )
+    )
+    return result.scalars().first()
+
+async def list_conversations(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(models.Conversation)
+        .where(models.Conversation.user_id == user_id)
+        .order_by(models.Conversation.updated_at.desc())
+    )
+    return result.scalars().all()
+
+async def update_conversation(db: AsyncSession, conv_id: int, user_id: int, **fields):
+    conv = await get_conversation(db, conv_id, user_id)
+    if not conv:
+        return None
+    for key, value in fields.items():
+        if value is not None:
+            setattr(conv, key, value)
+    await db.flush()
+    return conv
+
+async def touch_conversation(db: AsyncSession, conv: models.Conversation):
+    conv.updated_at = datetime.datetime.utcnow()
+    await db.flush()
+
+async def delete_conversation(db: AsyncSession, conv_id: int, user_id: int):
+    conv = await get_conversation(db, conv_id, user_id)
+    if not conv:
+        return False
+    await db.delete(conv)
+    await db.flush()
+    return True
+
+async def add_message(db: AsyncSession, conversation_id: int, role: str, content: str,
+                      tool_calls=None, metadata=None):
+    msg = models.Message(
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+        tool_calls_json=tool_calls or [],
+        metadata_json=metadata or {}
+    )
+    db.add(msg)
+    await db.flush()
+    return msg
+
+async def get_messages(db: AsyncSession, conversation_id: int):
+    result = await db.execute(
+        select(models.Message)
+        .where(models.Message.conversation_id == conversation_id)
+        .order_by(models.Message.created_at.asc(), models.Message.id.asc())
+    )
+    return result.scalars().all()
+
+# -- Settings Helpers --
+async def get_setting_row(db: AsyncSession, user_id: int, key: str):
+    result = await db.execute(
+        select(models.UserSetting).where(
+            models.UserSetting.user_id == user_id,
+            models.UserSetting.key == key
+        )
+    )
+    return result.scalars().first()
+
+async def get_all_settings(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(models.UserSetting).where(models.UserSetting.user_id == user_id)
+    )
+    return result.scalars().all()
+
+async def upsert_setting(db: AsyncSession, user_id: int, key: str, value: str, is_secret: bool = False):
+    row = await get_setting_row(db, user_id, key)
+    if row:
+        row.value = value
+        row.is_secret = is_secret
+    else:
+        row = models.UserSetting(user_id=user_id, key=key, value=value, is_secret=is_secret)
+        db.add(row)
+    await db.flush()
+    return row
+
 # -- StudyReview Helpers (Spaced Repetition) --
 async def get_study_review_by_concept(db: AsyncSession, concept_id: int, user_id: int):
     result = await db.execute(

@@ -45,6 +45,9 @@
           <button class="nav-link active" onclick="switchTab('today')">
             <i data-lucide="calendar"></i> Today
           </button>
+          <button class="nav-link" onclick="switchTab('chat')">
+            <i data-lucide="message-circle"></i> Chat
+          </button>
           <button class="nav-link" onclick="switchTab('life-ops')">
             <i data-lucide="check-square"></i> Life Ops
           </button>
@@ -59,6 +62,9 @@
           </button>
           <button class="nav-link" onclick="switchTab('integrations')">
             <i data-lucide="link-2"></i> Integrations
+          </button>
+          <button class="nav-link" onclick="switchTab('settings')">
+            <i data-lucide="settings"></i> Settings
           </button>
         </nav>
       </div>
@@ -81,6 +87,10 @@
       <button class="mobile-tab-btn active" onclick="switchTab('today')">
         <i data-lucide="calendar"></i>
         <span>Today</span>
+      </button>
+      <button class="mobile-tab-btn" onclick="switchTab('chat')">
+        <i data-lucide="message-circle"></i>
+        <span>Chat</span>
       </button>
       <button class="mobile-tab-btn" onclick="switchTab('life-ops')">
         <i data-lucide="check-square"></i>
@@ -418,11 +428,24 @@
           <div class="form-group">
             <input type="text" id="global-search-input" placeholder="Search tasks, notes, documents..." style="font-size: 1.1rem; padding: 0.9rem 1.2rem;">
           </div>
-          
+
           <span class="category-label">Search Results</span>
           <div id="search-results-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
             <p class="empty-state-text">Type something above to begin searching.</p>
           </div>
+
+          <hr class="section-divider" style="margin-top: 2.5rem;">
+
+          <!-- Web Search Pane -->
+          <span class="category-label">
+            <i data-lucide="globe" style="width:13px; height:13px; display:inline-block; vertical-align:middle; margin-right:4px;"></i>
+            Web Search
+          </span>
+          <form id="web-search-form" style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+            <input type="text" id="web-search-input" placeholder="Search the live web (Tavily / SearXNG)..." style="flex: 1; padding: 0.7rem 1rem;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.7rem 1.5rem;">Search Web</button>
+          </form>
+          <div id="web-search-results" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem;"></div>
         </section>
 
         <!-- 6. INTEGRATIONS TAB -->
@@ -435,6 +458,141 @@
           <div id="integrations-list" class="dashboard-grid">
             <!-- Dynamic integration cards will be injected here -->
           </div>
+        </section>
+
+        <!-- 7. CHAT TAB -->
+        <section id="panel-chat" class="panel chat-panel">
+          <div class="chat-layout">
+            <!-- Conversations sidebar -->
+            <aside class="chat-sidebar">
+              <div class="chat-sidebar-header">
+                <span>Chats</span>
+                <button id="btn-new-chat" class="chat-new-btn" title="New chat">
+                  <i data-lucide="plus"></i>
+                </button>
+              </div>
+              <div id="chat-conversation-list" class="chat-conversation-list">
+                <!-- conversation items injected here -->
+              </div>
+            </aside>
+
+            <!-- Active conversation -->
+            <div class="chat-main">
+              <div class="chat-main-header">
+                <input type="text" id="chat-title-input" class="chat-title-input" placeholder="New Chat" disabled>
+                <input type="text" id="chat-tag-input" class="chat-tag-input" placeholder="+ tag" disabled>
+              </div>
+              <div id="chat-messages" class="chat-messages">
+                <div class="chat-empty-state">
+                  <i data-lucide="message-circle" style="width:32px;height:32px;opacity:0.4;"></i>
+                  <p>Start a conversation. I can use your calendar, email, web search, and Second Brain as tools.</p>
+                </div>
+              </div>
+              <form id="chat-composer" class="chat-composer">
+                <textarea id="chat-input" rows="1" placeholder="Message LifeOS..." disabled></textarea>
+                <button type="submit" id="chat-send-btn" class="btn btn-primary" disabled>
+                  <i data-lucide="send" style="width:16px;height:16px;"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. SETTINGS TAB -->
+        <section id="panel-settings" class="panel">
+          <h1 class="page-title">Settings</h1>
+          <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">
+            Configure your AI provider, web search, and email. Secrets are encrypted at rest and never displayed back.
+          </p>
+
+          <form id="settings-form">
+            <!-- AI Provider -->
+            <div class="paper-surface" style="margin-bottom: 1.5rem;">
+              <h2><i data-lucide="sparkles" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> AI Model</h2>
+              <div class="form-group">
+                <label for="set-llm_provider">LLM Provider</label>
+                <select id="set-llm_provider" data-key="llm_provider">
+                  <option value="lemma">Lemma (local agent — no key needed)</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="set-llm_model">Model override <span class="setting-hint">(optional)</span></label>
+                <input type="text" id="set-llm_model" data-key="llm_model" placeholder="e.g. claude-opus-4-8">
+              </div>
+              <div class="form-group">
+                <label for="set-anthropic_api_key">Anthropic API Key <span id="flag-anthropic_api_key" class="setting-flag"></span></label>
+                <input type="password" id="set-anthropic_api_key" data-key="anthropic_api_key" data-secret="1" placeholder="sk-ant-...">
+              </div>
+              <div class="form-group">
+                <label for="set-openai_api_key">OpenAI API Key <span id="flag-openai_api_key" class="setting-flag"></span></label>
+                <input type="password" id="set-openai_api_key" data-key="openai_api_key" data-secret="1" placeholder="sk-...">
+              </div>
+            </div>
+
+            <!-- Web Search -->
+            <div class="paper-surface" style="margin-bottom: 1.5rem;">
+              <h2><i data-lucide="globe" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> Web Search</h2>
+              <div class="form-group">
+                <label for="set-web_search_provider">Provider</label>
+                <select id="set-web_search_provider" data-key="web_search_provider">
+                  <option value="tavily">Tavily</option>
+                  <option value="searxng">SearXNG (self-hosted)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="set-tavily_api_key">Tavily API Key <span id="flag-tavily_api_key" class="setting-flag"></span></label>
+                <input type="password" id="set-tavily_api_key" data-key="tavily_api_key" data-secret="1" placeholder="tvly-...">
+              </div>
+              <div class="form-group">
+                <label for="set-searxng_url">SearXNG Instance URL <span class="setting-hint">(optional)</span></label>
+                <input type="text" id="set-searxng_url" data-key="searxng_url" placeholder="https://searx.example.com">
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="paper-surface" style="margin-bottom: 1.5rem;">
+              <h2><i data-lucide="mail" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> Email (Gmail IMAP/SMTP)</h2>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 1rem;">
+                Use a Google <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">App Password</a> (not your normal password) with 2-Step Verification enabled.
+              </p>
+              <div class="form-group">
+                <label for="set-email_address">Email Address</label>
+                <input type="email" id="set-email_address" data-key="email_address" placeholder="you@gmail.com">
+              </div>
+              <div class="form-group">
+                <label for="set-email_app_password">App Password <span id="flag-email_app_password" class="setting-flag"></span></label>
+                <input type="password" id="set-email_app_password" data-key="email_app_password" data-secret="1" placeholder="16-character app password">
+              </div>
+              <div class="settings-row">
+                <div class="form-group" style="flex:1;">
+                  <label for="set-imap_host">IMAP Host</label>
+                  <input type="text" id="set-imap_host" data-key="imap_host" placeholder="imap.gmail.com">
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label for="set-smtp_host">SMTP Host</label>
+                  <input type="text" id="set-smtp_host" data-key="smtp_host" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-group" style="width:90px;">
+                  <label for="set-smtp_port">SMTP Port</label>
+                  <input type="text" id="set-smtp_port" data-key="smtp_port" placeholder="587">
+                </div>
+              </div>
+              <button type="button" id="btn-test-email" class="btn btn-secondary" style="font-size:0.85rem;">Test Email Connection</button>
+            </div>
+
+            <!-- Memory -->
+            <div class="paper-surface" style="margin-bottom: 1.5rem;">
+              <h2><i data-lucide="brain" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> Memory</h2>
+              <label class="settings-checkbox">
+                <input type="checkbox" id="set-auto_memory_enabled" data-key="auto_memory_enabled" data-bool="1">
+                <span>Let the Second Brain automatically decide what to remember from chats</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Settings</button>
+          </form>
         </section>
 
       </div>

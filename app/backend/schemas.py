@@ -123,6 +123,71 @@ class AssistantQueryResponse(BaseModel):
     response_message: str
     suggested_actions: Optional[List[Dict[str, Any]]] = None
 
+# -- Chat / Conversations --
+
+class ConversationCreate(BaseModel):
+    title: Optional[str] = "New Chat"
+    tag: Optional[str] = None
+
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = None
+    tag: Optional[str] = None
+
+class ConversationResponse(BaseModel):
+    id: int
+    title: str
+    tag: Optional[str] = None
+    metadata_json: Dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class MessageResponse(BaseModel):
+    id: int
+    conversation_id: int
+    role: str
+    content: Optional[str] = None
+    tool_calls_json: List[Dict[str, Any]] = []
+    metadata_json: Dict[str, Any] = {}
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class ChatSendRequest(BaseModel):
+    message: str
+
+class ChatSendResponse(BaseModel):
+    conversation_id: int
+    user_message: MessageResponse
+    assistant_message: MessageResponse
+    tools_used: List[str] = []
+
+# -- Settings --
+
+class SettingsResponse(BaseModel):
+    # Non-secret values returned verbatim; secrets returned as "" plus a *_set flag.
+    values: Dict[str, Any]
+
+class SettingsUpdate(BaseModel):
+    values: Dict[str, Any]
+
+# -- Web Search --
+
+class WebSearchRequest(BaseModel):
+    query: str
+    max_results: Optional[int] = 6
+
+class WebSearchResult(BaseModel):
+    title: str
+    url: str
+    snippet: str
+
+class WebSearchResponse(BaseModel):
+    query: str
+    provider: str
+    answer: Optional[str] = None
+    results: List[WebSearchResult] = []
+
+
 class UserIntegrationResponse(BaseModel):
     name: str
     is_connected: bool

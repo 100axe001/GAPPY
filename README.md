@@ -110,6 +110,23 @@ Pre-seeded login credentials:
 
 ## Feature Walkthrough
 
+### Chat (AI Assistant with Tools)
+A clean, standard chat experience with a conversation sidebar (rename + tag any chat) on the left and the message thread on the right. The assistant is backed by a configurable LLM and can **use your integrations as tools**:
+
+- **Regex intent recognition** inspects each message and activates only the relevant tools for that turn — integrations are never all-on at once. Calendar wording surfaces the Google Calendar tools, "search the web…" surfaces Web Search, "email/inbox" surfaces the IMAP/SMTP tools, "remind me…" surfaces task creation, and "what did I tell you…" surfaces Second Brain recall.
+- The LLM runs a tool loop: it calls a tool, reads the result, then answers. Tools used in a reply are shown as chips on the message.
+- **Automatic memory (Second Brain):** after each exchange the assistant decides on its own whether anything durable (a preference, fact, project, or commitment) is worth keeping, and silently saves it as a note. Saved memories appear beneath the reply and become recall context for future chats.
+
+### Settings
+Configure everything from one encrypted panel (secrets are stored encrypted and never shown back):
+- **AI Model** — choose Lemma (local, no key), Anthropic (Claude), or OpenAI, with an optional model override.
+- **Web Search** — pick Tavily (API key) or a self-hosted SearXNG (instance URL).
+- **Email** — Gmail/IMAP/SMTP via a Google **App Password** (test the connection with one click).
+- **Memory** — toggle automatic Second Brain saving.
+
+### Web Search
+A dedicated Web Search pane lives in the Search tab (Tavily or SearXNG), and the same capability is available to the chat assistant as a tool.
+
 ### Today View (landing page)
 The default screen aggregates your day: overdue tasks, items due today, spaced-repetition review queue, stale follow-ups, and an AI brain insight. The greeting updates based on the time of day.
 

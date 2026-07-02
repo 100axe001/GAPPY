@@ -1,0 +1,26 @@
+{
+  "name": "commitment-parser",
+  "description": "Turns a natural-language commitment ('call the dentist next Thursday') into a structured task.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "raw_text": { "type": "string", "description": "The natural-language commitment." },
+      "today": { "type": "string", "description": "Today's date as YYYY-MM-DD, for relative-date resolution." }
+    },
+    "required": ["raw_text"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "description": "Short imperative task title." },
+      "content": { "type": "string", "description": "Any extra detail, or empty." },
+      "due_date": { "type": "string", "description": "Resolved deadline as YYYY-MM-DD, or empty if none implied." },
+      "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+      "category": { "type": "string", "description": "work | personal | health | study | finance | other." }
+    },
+    "required": ["title", "priority", "category"]
+  },
+  "permissions": { "grants": [] }
+}

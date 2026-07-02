@@ -13,9 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .database import get_db, Base, engine
 from . import models, schemas, crud, auth, ai
 from .security import encrypt_data, decrypt_data
-from .integrations.registry import registry
-from .integrations import service as int_service
-from .integrations.routing import route_and_execute_query
+from .integrations import connectors as connectors_service
+from . import workflows_service, pod_store
 from . import settings_service, chat as chat_engine
 from .integrations.web_search import web_search, WebSearchError
 from .integrations import email_adapter
@@ -244,7 +243,7 @@ async def create_item(
 
 @app.get("/api/items/{item_id}", response_model=schemas.ItemResponse)
 async def get_item(
-    item_id: int,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -255,7 +254,7 @@ async def get_item(
 
 @app.put("/api/items/{item_id}", response_model=schemas.ItemResponse)
 async def update_item(
-    item_id: int,
+    item_id: str,
     item_in: schemas.ItemUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -267,7 +266,7 @@ async def update_item(
 
 @app.delete("/api/items/{item_id}")
 async def delete_item(
-    item_id: int,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -294,7 +293,7 @@ async def create_connection(
 
 @app.delete("/api/connections/{conn_id}")
 async def delete_connection(
-    conn_id: int,
+    conn_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -305,7 +304,7 @@ async def delete_connection(
 
 @app.get("/api/items/{item_id}/connections", response_model=List[schemas.ConnectionDetailResponse])
 async def get_item_connections(
-    item_id: int,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -324,31 +323,31 @@ async def upload_material(
     with open(local_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # 2. Upload to Lemma in background
+    # 2. Extract text for the study-coach agent
     sdk_res = await ai.upload_learning_file_to_lemma(filename, local_path)
     if "error" in sdk_res:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lemma upload failed: {sdk_res['error']}"
+            detail=f"Could not process file: {sdk_res['error']}"
         )
-        
+
     # 3. Create Item representing this Study Material
     item_in = schemas.ItemCreate(
         type="study_material",
         title=file.filename,
-        content=f"/learning/{filename}", # Lemma path alias
+        content=f"/learning/{filename}",
         status="todo",
         metadata_json={
             "local_path": local_path,
-            "lemma_path": f"/learning/{filename}",
-            "upload_response": sdk_res
+            "extracted_text": sdk_res.get("extracted_text", ""),
+            "chars": sdk_res.get("chars", 0),
         }
     )
     return await crud.create_item(db, item_in)
 
 @app.post("/api/learning/study")
 async def start_study_session(
-    material_id: int = Form(...),
+    material_id: str = Form(...),
     self_reported_confusion: str = Form(""),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -358,14 +357,12 @@ async def start_study_session(
     if not material or material.type != "study_material":
         raise HTTPException(status_code=404, detail="Study material not found")
         
-    lemma_path = material.metadata_json.get("lemma_path")
-    if not lemma_path:
-        raise HTTPException(status_code=400, detail="Material is missing Lemma index path")
-        
-    # Generate study plan & questions using Lemma SDK
+    material_context = material.metadata_json.get("extracted_text", "")
+
+    # Generate study plan & questions using the study-coach Lemma agent
     ai_res, search_results = await ai.generate_study_plan_and_questions(
         material_title=material.title,
-        material_path=lemma_path,
+        material_context=material_context,
         self_reported_confusion=self_reported_confusion
     )
     
@@ -641,7 +638,7 @@ async def pomodoro_debrief(
 
 @app.get("/api/learning/reviews/generate-quiz")
 async def get_review_quiz(
-    concept_id: int,
+    concept_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -728,9 +725,8 @@ async def get_today_view(
 
 # -- Integrations Routes --
 
-@app.get("/api/integrations", response_model=List[schemas.UserIntegrationResponse])
+@app.get("/api/integrations")
 async def list_integrations(
-    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     try:
@@ -774,7 +770,6 @@ async def list_integrations(
 @app.get("/api/integrations/{name}/auth-url")
 async def get_integration_auth_url(
     name: str,
-    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     normalized_name = name.replace("-", "_")
@@ -797,73 +792,14 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        decrypted = decrypt_data(state)
-        parts = decrypted.split(":")
-        if len(parts) < 2:
-            raise ValueError("Invalid state payload format.")
-        user_id = int(parts[0])
-        name = parts[2] if len(parts) > 2 else "google_calendar"
+        auth_url = await connectors_service.get_connect_url(name)
+        return {"auth_url": auth_url}
     except Exception as e:
-        return HTMLResponse(
-            status_code=400,
-            content=f"<html><body><h3>Security Error</h3><p>OAuth state validation failed: {e}</p></body></html>"
-        )
-        
-    adapter = registry.get_adapter(name)
-    if not adapter:
-        return HTMLResponse(status_code=404, content=f"<html><body><h3>Integration '{name}' not found</h3></body></html>")
-        
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI") or "http://localhost:8081/api/integrations/oauth/callback"
-    
-    try:
-        token_data = await adapter.exchange_code(redirect_uri, code)
-        await int_service.save_user_credentials(
-            db,
-            user_id=user_id,
-            name=name,
-            token_data=token_data,
-            scopes=adapter.scopes
-        )
-        
-        return HTMLResponse(
-            content=f"""
-            <html>
-              <head>
-                <title>Connection Successful</title>
-                <style>
-                  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding-top: 15vh; background-color: #F7F4EF; color: #2C2825; }}
-                  .card {{ background-color: #FFFDF9; border: 1px solid #E3DDD6; border-radius: 8px; max-width: 400px; margin: 0 auto; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}
-                  h3 {{ font-family: Georgia, serif; color: #8FAF8F; font-size: 1.5rem; margin-bottom: 1rem; }}
-                  p {{ color: #8C7F74; font-size: 0.95rem; margin-bottom: 2rem; }}
-                </style>
-              </head>
-              <body>
-                <div class="card">
-                  <h3>{adapter.display_name} Connected!</h3>
-                  <p>Your workspace is now securely linked. You can close this tab and return to LifeOS.</p>
-                  <script>
-                    if (window.opener && typeof window.opener.onOAuthSuccess === 'function') {{
-                      window.opener.onOAuthSuccess('{adapter.display_name}');
-                    }}
-                    setTimeout(function() {{ window.close(); }}, 2500);
-                  </script>
-                </div>
-              </body>
-            </html>
-            """
-        )
-    except Exception as err:
-        import logging
-        logging.getLogger("lifeos.main").error(f"OAuth callback code exchange failed: {err}", exc_info=True)
-        return HTMLResponse(
-            status_code=500,
-            content=f"<html><body><h3>OAuth Connection Failed</h3><p>Error: {err}</p></body></html>"
-        )
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.delete("/api/integrations/{name}")
 async def disconnect_integration(
     name: str,
-    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     normalized_name = name.replace("-", "_")
@@ -890,31 +826,14 @@ async def disconnect_integration(
 @app.post("/api/integrations/{name}/test")
 async def test_integration_connection(
     name: str,
-    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    normalized_name = name.replace("-", "_")
-    adapter = registry.get_adapter(normalized_name)
-    if adapter and normalized_name in ("google_calendar", "gmail", "slack", "google_tasks"):
-        success = await adapter.test_connection({})
-        if not success:
-            return {
-                "status": "unhealthy",
-                "error_message": "Authentication failed. Reconnection required."
-            }
-        return {"status": "healthy"}
-        
-    success = await int_service.test_integration_health(db, current_user.id, normalized_name)
-    if not success:
-        ui = await int_service.get_user_integration(db, current_user.id, normalized_name)
-        error_msg = ui.error_message if ui else "Authentication failed. Reconnection required."
-        return {
-            "status": "unhealthy",
-            "error_message": error_msg
-        }
+    connected = await connectors_service.is_connected(name)
+    if not connected:
+        return {"status": "unhealthy", "error_message": "Not connected yet."}
     return {"status": "healthy"}
 
-# -- AI Assistant Query Endpoint --
+# -- AI Assistant Quick-Add (Today page) --
 
 @app.post("/api/assistant/query", response_model=schemas.AssistantQueryResponse)
 async def assistant_query(
@@ -922,8 +841,66 @@ async def assistant_query(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    res = await route_and_execute_query(db, user_id=current_user.id, query=req.query)
-    return res
+    """Parse a natural-language line into a task via the commitment-parser agent and save it."""
+    parsed = await ai.parse_commitment_inbox(req.query)
+    due = None
+    if parsed.get("due_date"):
+        try:
+            due = datetime.datetime.strptime(parsed["due_date"], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
+    item = await crud.create_item(db, schemas.ItemCreate(
+        type="task",
+        title=parsed.get("title") or req.query,
+        content=parsed.get("content", ""),
+        priority=parsed.get("priority", "medium"),
+        status="todo",
+        due_date=due,
+        metadata_json={"category": parsed.get("category"), "source": "assistant_quick_add"},
+    ))
+    return schemas.AssistantQueryResponse(
+        intent="create_task",
+        integration="lifeos",
+        execution_status="success",
+        response_message=f"Added task: {item.title}",
+        suggested_actions=[{"type": "open_task", "id": str(item.id)}],
+    )
+
+# -- Workflows (agent → human approval → action) --
+
+@app.get("/api/workflows")
+async def list_workflows(current_user: models.User = Depends(auth.get_current_user)):
+    return await workflows_service.list_workflows()
+
+@app.post("/api/workflows/{name}/start")
+async def start_workflow(
+    name: str,
+    req: schemas.WorkflowStartRequest,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    inputs = dict(req.inputs or {})
+    # commitment-intake writes a task owned by the app owner.
+    if name == "commitment-intake":
+        inputs.setdefault("user_id", pod_store.DEFAULT_OWNER)
+        inputs.setdefault("today", datetime.date.today().strftime("%Y-%m-%d"))
+    try:
+        return await workflows_service.start_workflow(name, inputs)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/workflows/approvals")
+async def list_approvals(current_user: models.User = Depends(auth.get_current_user)):
+    return await workflows_service.list_approvals()
+
+@app.post("/api/workflows/decision")
+async def workflow_decision(
+    req: schemas.WorkflowDecisionRequest,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    try:
+        return await workflows_service.decide(req.run_id, req.node_id, req.approved)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # -- Chat / Conversations --
 

@@ -9,4 +9,5 @@ pydantic-settings>=2.0
 python-multipart>=0.0.6
 reportlab>=4.0.0
 httpx>=0.25.0
+pypdf>=4.0.0
 lemma-platform/lemma-python

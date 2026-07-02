@@ -1,0 +1,54 @@
+{
+  "name": "note-linker",
+  "description": "Second Brain: given a new note and the user's existing notes, finds related notes and suggests follow-up tasks.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "new_note": { "type": "string", "description": "Title + content of the new note." },
+      "existing_notes": { "type": "string", "description": "List of existing notes with their ids." }
+    },
+    "required": ["new_note"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "connections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "target_id": { "type": "string", "description": "items.id of the related note." },
+            "connection_type": { "type": "string", "enum": ["relates_to"] },
+            "reason": { "type": "string" }
+          },
+          "required": ["target_id", "connection_type"]
+        }
+      },
+      "suggested_tasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "content": { "type": "string" },
+            "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+            "due_date": { "type": "string", "description": "YYYY-MM-DD or empty." }
+          },
+          "required": ["title", "priority"]
+        }
+      }
+    },
+    "required": ["connections", "suggested_tasks"]
+  },
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "items",
+        "permission_ids": ["datastore.table.read", "datastore.record.read"]
+      }
+    ]
+  }
+}

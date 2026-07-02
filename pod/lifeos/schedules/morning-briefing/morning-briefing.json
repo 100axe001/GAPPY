@@ -1,0 +1,10 @@
+{
+  "name": "morning-briefing",
+  "description": "Every morning, run the brain-insights agent so the Today view opens with fresh insight.",
+  "schedule_type": "TIME",
+  "config": {
+    "cron": "0 7 * * *"
+  },
+  "agent_name": "brain-insights",
+  "is_active": true
+}

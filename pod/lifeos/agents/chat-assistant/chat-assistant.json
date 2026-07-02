@@ -1,0 +1,28 @@
+{
+  "name": "chat-assistant",
+  "description": "LifeOS personal assistant. Chats with the user and can use their tasks/notes, web search, calendar, email, and Slack as tools.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD", "WEB_SEARCH"],
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "items",
+        "permission_ids": ["datastore.table.read", "datastore.record.read", "datastore.record.write"]
+      },
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "connections",
+        "permission_ids": ["datastore.table.read", "datastore.record.read"]
+      },
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "study_reviews",
+        "permission_ids": ["datastore.table.read", "datastore.record.read"]
+      },
+      { "resource_type": "connector", "resource_name": "gmail", "permission_ids": ["connector.use"] },
+      { "resource_type": "connector", "resource_name": "google_calendar", "permission_ids": ["connector.use"] },
+      { "resource_type": "connector", "resource_name": "slack", "permission_ids": ["connector.use"] }
+    ]
+  }
+}

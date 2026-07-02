@@ -1,0 +1,16 @@
+{
+  "name": "apply_task",
+  "description": "Creates a task record in the items table. Terminal step of the commitment-intake workflow.",
+  "type": "API",
+  "code": {"$file": "code.py"},
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "items",
+        "permission_ids": ["datastore.table.read", "datastore.record.read", "datastore.record.write"]
+      }
+    ]
+  },
+  "visibility": "POD"
+}

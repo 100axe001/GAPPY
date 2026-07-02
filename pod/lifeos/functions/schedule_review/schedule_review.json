@@ -1,0 +1,16 @@
+{
+  "name": "schedule_review",
+  "description": "Spaced-repetition scheduler: given a review outcome, computes the next interval and upserts the study_reviews row.",
+  "type": "API",
+  "code": {"$file": "code.py"},
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "study_reviews",
+        "permission_ids": ["datastore.table.read", "datastore.record.read", "datastore.record.write"]
+      }
+    ]
+  },
+  "visibility": "POD"
+}

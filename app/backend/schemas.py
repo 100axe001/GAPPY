@@ -38,7 +38,7 @@ class ItemUpdate(BaseModel):
     metadata_json: Optional[Dict[str, Any]] = None
 
 class ItemResponse(BaseModel):
-    id: int
+    id: str
     type: str
     title: str
     content: Optional[str] = None
@@ -51,22 +51,22 @@ class ItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ConnectionCreate(BaseModel):
-    source_id: int
-    target_id: int
+    source_id: str
+    target_id: str
     connection_type: str
 
 class ConnectionResponse(BaseModel):
-    id: int
-    source_id: int
-    target_id: int
+    id: str
+    source_id: str
+    target_id: str
     connection_type: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 class ConnectionDetailResponse(BaseModel):
-    id: int
-    source_id: int
-    target_id: int
+    id: str
+    source_id: str
+    target_id: str
     connection_type: str
     created_at: datetime
     source_title: str
@@ -76,9 +76,9 @@ class ConnectionDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class StudyReviewResponse(BaseModel):
-    id: int
-    user_id: int
-    concept_id: int
+    id: str
+    user_id: str
+    concept_id: str
     interval_days: int
     due_date: datetime
     last_reviewed_at: Optional[datetime] = None
@@ -88,11 +88,11 @@ class StudyReviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class StudyReviewSubmit(BaseModel):
-    review_id: int
+    review_id: str
     score: int  # e.g., number of correct answers out of 3
 
 class PracticeTestSubmit(BaseModel):
-    material_id: int
+    material_id: str
     answers: List[Dict[str, Any]]  # [{"question": "...", "selected": "...", "correct": "...", "topic": "..."}]
 
 class CommitmentInboxRequest(BaseModel):
@@ -106,12 +106,20 @@ class CommitmentInboxConfirm(BaseModel):
     category: Optional[str] = None
 
 class DraftGenerateRequest(BaseModel):
-    note_ids: List[int]
+    note_ids: List[str]
     format: str  # "essay", "plan", "email", "summary"
 
 class PomodoroDebriefRequest(BaseModel):
     summary: str
     confusion: Optional[str] = ""
+
+class WorkflowStartRequest(BaseModel):
+    inputs: Optional[Dict[str, Any]] = None
+
+class WorkflowDecisionRequest(BaseModel):
+    run_id: str
+    node_id: str
+    approved: bool
 
 class AssistantQueryRequest(BaseModel):
     query: str

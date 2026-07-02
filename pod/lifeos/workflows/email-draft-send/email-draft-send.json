@@ -1,0 +1,82 @@
+{
+  "name": "email-draft-send",
+  "description": "An agent drafts an email; a human reviews and approves; the connector sends it. Agent drafts, human decides, tool acts.",
+  "start": { "type": "MANUAL" },
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "FORM",
+      "label": "Email brief",
+      "config": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string", "title": "Recipient" },
+            "brief": { "type": "string", "title": "What should the email say?" },
+            "tone": { "type": "string", "title": "Tone (optional)" }
+          },
+          "required": ["to", "brief"]
+        }
+      }
+    },
+    {
+      "id": "draft",
+      "type": "AGENT",
+      "label": "Draft email",
+      "config": {
+        "agent_name": "email-drafter",
+        "input_mapping": {
+          "recipient": { "type": "expression", "value": "entry.to" },
+          "brief": { "type": "expression", "value": "entry.brief" },
+          "tone": { "type": "expression", "value": "entry.tone", "optional": true }
+        }
+      }
+    },
+    {
+      "id": "review",
+      "type": "FORM",
+      "label": "Approve & send",
+      "config": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "approved": { "type": "boolean", "title": "Send this email?" }
+          },
+          "required": ["approved"]
+        }
+      }
+    },
+    {
+      "id": "route",
+      "type": "DECISION",
+      "label": "Approved?",
+      "config": {
+        "rules": [
+          { "condition": "review.approved == `true`", "next_node_id": "send" }
+        ]
+      }
+    },
+    {
+      "id": "send",
+      "type": "FUNCTION",
+      "label": "Send via Gmail",
+      "config": {
+        "function_name": "send_gmail",
+        "input_mapping": {
+          "to": { "type": "expression", "value": "entry.to" },
+          "subject": { "type": "expression", "value": "draft.subject" },
+          "body": { "type": "expression", "value": "draft.body" }
+        }
+      }
+    },
+    { "id": "end", "type": "END", "label": "Done" }
+  ],
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "draft" },
+    { "id": "e2", "source": "draft", "target": "review" },
+    { "id": "e3", "source": "review", "target": "route" },
+    { "id": "e4", "source": "route", "target": "end", "label": "not approved (default)" },
+    { "id": "e5", "source": "route", "target": "send", "label": "approved" },
+    { "id": "e6", "source": "send", "target": "end" }
+  ]
+}

@@ -1,8 +1,15 @@
 # LifeOS — Personal AI Command Centre
 
-LifeOS is a full-stack personal AI-powered command centre designed to help you close every open loop in your life. It features a unified task/deadline tracker, an **AI Second Brain** that links thoughts and extracts actions, an **AI Learning Companion** that automates study materials and schedules revisions, and a **Today View** that surfaces your most important work every morning.
+LifeOS is a full-stack personal AI command centre — a unified task/deadline tracker, an **AI Second Brain** that links thoughts and extracts actions, an **AI Learning Companion** that builds study material and schedules spaced revisions, a **Chat** assistant with real tools, and a **Today View** that surfaces your day.
 
-Built as an extension layer on top of the **[Lemma SDK](https://github.com/lemma-work/lemma-platform)** — all semantic search, RAG, and LLM calls are routed through your locally running Lemma container stack.
+**It is a real Lemma pod, not a wrapper.** LifeOS is built directly on the **[Lemma platform](https://github.com/lemma-work/lemma-platform)** primitives:
+
+- **Pod datastore** — your tasks, notes, and review schedule live as rows in the `lifeos` pod's `items` / `connections` / `study_reviews` tables (not a private database).
+- **Purpose-built agents** — `note-linker`, `commitment-parser`, `study-coach`, `weekly-reviewer`, `brain-insights`, `email-drafter`, and a tool-using `chat-assistant`, each with its own output schema and least-privilege grants.
+- **Workflows with human approval** — `commitment-intake` (agent → **you approve** → task) and `email-draft-send` (agent drafts → **you approve** → Gmail sends). This is the Lemma "agent works, structured output lands, a human decides" shape.
+- **Functions** for deterministic logic, a **schedule** for the daily briefing, and the live **connector catalog** (Gmail, Calendar, Drive, Slack, Jira, …) for real integrations.
+
+The whole pod is a directory of files under [`pod/lifeos/`](pod/lifeos/) — inspect it, export it, or import it into any Lemma org.
 
 ---
 
@@ -28,9 +35,32 @@ Built as an extension layer on top of the **[Lemma SDK](https://github.com/lemma
 
 ### Prerequisites
 
-- **Docker Desktop** installed and running
-- **Lemma local stack** already running (provides the AI/LLM backend on port `8000`)
+- **Docker** running
+- **Lemma local stack** installed and running (the `lemma-stack` tool + `lemma` CLI), authenticated with `lemma auth login`
 - **Python 3.11+** on your host machine
+
+### Step 0 — Point Lemma at a model, connectors, and provision the pod *(one-time)*
+
+Lemma agents need a model provider, and the connector catalog must be imported once:
+
+```bash
+# 1. Model backend (agents can't run without this)
+lemma-stack config set LEMMA_DEFAULT_MODEL_TYPE openai_compat
+lemma-stack config set LEMMA_OPENAI_API_KEY sk-...
+# 2. (optional) extra connectors via Composio — native Gmail/Calendar/Slack/… work without it
+lemma-stack config set COMPOSIO_API_KEY <composio-api-key>
+lemma-stack restart
+
+# 3. Import the native connector catalog (Gmail, Calendar, Drive, Slack, Jira, …)
+docker exec lemma-local-backend python scripts/import_connector_catalog.py
+
+# 4. Create the pod and import the LifeOS bundle
+python app/provision.py            # prints LEMMA_ORG_ID / LEMMA_POD_ID
+```
+
+`docker-compose.yml` already defaults `LEMMA_ORG_ID` / `LEMMA_POD_ID`; override them via env if provisioning printed different ids.
+
+> **Connecting an integration** (OAuth) needs credentials for that app — either a Composio API key, or Google OAuth client credentials for the native Google connectors. Without them the catalog still shows live and the connect button reports honestly what's missing.
 
 ---
 
@@ -84,12 +114,18 @@ docker compose up -d
 
 **http://localhost:8081**
 
-Pre-seeded login credentials:
+Seed sample data (runs against the live app, so notes trigger the `note-linker` agent):
 
-| Field    | Value                          |
-|----------|--------------------------------|
-| Email    | `srivastavaaarush25@gmail.com` |
-| Password | `password`                     |
+```bash
+python app/seed.py
+```
+
+Login credentials:
+
+| Field    | Value              |
+|----------|--------------------|
+| Email    | `demo@lifeos.dev`  |
+| Password | `password`         |
 
 ---
 

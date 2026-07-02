@@ -1,0 +1,38 @@
+{
+  "name": "brain-insights",
+  "description": "Surfaces 3-5 high-signal insights and patterns from the user's recent notes.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "notes_digest": { "type": "string", "description": "Optional rendered list of the user's recent notes. If omitted, read the items table (type=note) directly." }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "insights": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "detail": { "type": "string" }
+          },
+          "required": ["title", "detail"]
+        }
+      }
+    },
+    "required": ["insights"]
+  },
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "items",
+        "permission_ids": ["datastore.table.read", "datastore.record.read"]
+      }
+    ]
+  }
+}

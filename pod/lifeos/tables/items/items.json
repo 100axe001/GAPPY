@@ -1,0 +1,37 @@
+{
+  "name": "items",
+  "primary_key_column": "id",
+  "enable_rls": false,
+  "description": "Unified life entity: tasks, notes, deadlines, and study materials. Scoped per app user via user_id.",
+  "columns": [
+    {
+      "name": "type",
+      "type": "ENUM",
+      "required": true,
+      "default": "task",
+      "options": ["task", "note", "deadline", "study_material", "study_topic", "practice_question"],
+      "description": "What kind of item this is."
+    },
+    { "name": "title", "type": "TEXT", "required": true, "max_length": 500 },
+    { "name": "content", "type": "TEXT", "description": "Body / note text / description." },
+    {
+      "name": "status",
+      "type": "TEXT",
+      "default": "todo",
+      "description": "Free-form lifecycle: todo | in_progress | done | learning | learned | archived."
+    },
+    {
+      "name": "priority",
+      "type": "ENUM",
+      "default": "medium",
+      "options": ["low", "medium", "high"]
+    },
+    { "name": "due_date", "type": "DATETIME", "description": "Deadline / scheduled time." },
+    { "name": "category", "type": "TEXT", "description": "Free-form category (work, personal, study, ...)." },
+    { "name": "waiting_on", "type": "TEXT", "description": "Follow-up tracker: who/what this is blocked on." },
+    { "name": "metadata", "type": "JSON", "description": "Arbitrary structured metadata (AI traces, source ids, etc.)." },
+    { "name": "owner_id", "type": "TEXT", "required": true, "description": "Owning app user id (LifeOS auth). Named owner_id because user_id is Lemma-reserved." },
+    { "name": "source", "type": "TEXT", "description": "Origin: manual | chat_memory | agent | workflow | seed." }
+  ],
+  "config": {}
+}

@@ -1,0 +1,50 @@
+{
+  "name": "study-coach",
+  "description": "Generates weak-topic analysis, a revision plan, and multiple-choice practice questions from study material.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "material_context": { "type": "string", "description": "Relevant excerpts from the study material (RAG)." },
+      "confusion": { "type": "string", "description": "What the learner says they're confused about (optional)." }
+    },
+    "required": ["material_context"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "weak_topics": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Concepts the learner should focus on."
+      },
+      "revision_plan": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "topic": { "type": "string" },
+            "action": { "type": "string" }
+          },
+          "required": ["topic", "action"]
+        }
+      },
+      "practice_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "string" } },
+            "answer_index": { "type": "integer" },
+            "topic": { "type": "string" }
+          },
+          "required": ["question", "options", "answer_index", "topic"]
+        }
+      }
+    },
+    "required": ["weak_topics", "revision_plan", "practice_questions"]
+  },
+  "permissions": { "grants": [] }
+}

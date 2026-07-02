@@ -1,0 +1,32 @@
+{
+  "name": "weekly-reviewer",
+  "description": "Summarizes the user's week: closed loops, slipped items, and what needs attention.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "tasks_digest": { "type": "string", "description": "Rendered list of the user's open/overdue/completed/stale tasks." }
+    },
+    "required": ["tasks_digest"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "summary_markdown": { "type": "string", "description": "A warm, concise weekly review in markdown." },
+      "closed_loops": { "type": "array", "items": { "type": "string" } },
+      "slipped": { "type": "array", "items": { "type": "string" } },
+      "needs_attention": { "type": "array", "items": { "type": "string" } }
+    },
+    "required": ["summary_markdown"]
+  },
+  "permissions": {
+    "grants": [
+      {
+        "resource_type": "datastore_table",
+        "resource_name": "items",
+        "permission_ids": ["datastore.table.read", "datastore.record.read"]
+      }
+    ]
+  }
+}

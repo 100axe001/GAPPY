@@ -1,0 +1,24 @@
+{
+  "name": "email-drafter",
+  "description": "Drafts a concise, on-tone email reply from a short brief. Used by the email-draft-send approval workflow.",
+  "instruction": {"$file": "instruction.md"},
+  "toolsets": ["POD"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "recipient": { "type": "string", "description": "Who the email is to." },
+      "brief": { "type": "string", "description": "What the user wants to say / the context to reply to." },
+      "tone": { "type": "string", "description": "Optional tone hint (friendly, formal, brief)." }
+    },
+    "required": ["brief"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "subject": { "type": "string" },
+      "body": { "type": "string" }
+    },
+    "required": ["subject", "body"]
+  },
+  "permissions": { "grants": [] }
+}

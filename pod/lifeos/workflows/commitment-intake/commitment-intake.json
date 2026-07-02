@@ -1,0 +1,84 @@
+{
+  "name": "commitment-intake",
+  "description": "Parse a natural-language commitment, let a human approve it, then create the task.",
+  "start": { "type": "MANUAL" },
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "FORM",
+      "label": "Commitment",
+      "config": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "raw_text": { "type": "string", "title": "What do you need to do?" },
+            "today": { "type": "string", "title": "Today (YYYY-MM-DD)" },
+            "user_id": { "type": "string", "title": "User id" }
+          },
+          "required": ["raw_text", "user_id"]
+        }
+      }
+    },
+    {
+      "id": "parse",
+      "type": "AGENT",
+      "label": "Parse commitment",
+      "config": {
+        "agent_name": "commitment-parser",
+        "input_mapping": {
+          "raw_text": { "type": "expression", "value": "entry.raw_text" },
+          "today": { "type": "expression", "value": "entry.today", "optional": true }
+        }
+      }
+    },
+    {
+      "id": "review",
+      "type": "FORM",
+      "label": "Approve task",
+      "config": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "approved": { "type": "boolean", "title": "Create this task?" }
+          },
+          "required": ["approved"]
+        }
+      }
+    },
+    {
+      "id": "route",
+      "type": "DECISION",
+      "label": "Approved?",
+      "config": {
+        "rules": [
+          { "condition": "review.approved == `true`", "next_node_id": "apply" }
+        ]
+      }
+    },
+    {
+      "id": "apply",
+      "type": "FUNCTION",
+      "label": "Create task",
+      "config": {
+        "function_name": "apply_task",
+        "input_mapping": {
+          "title": { "type": "expression", "value": "parse.title" },
+          "content": { "type": "expression", "value": "parse.content", "optional": true },
+          "due_date": { "type": "expression", "value": "parse.due_date", "optional": true },
+          "priority": { "type": "expression", "value": "parse.priority", "optional": true },
+          "category": { "type": "expression", "value": "parse.category", "optional": true },
+          "user_id": { "type": "expression", "value": "entry.user_id" }
+        }
+      }
+    },
+    { "id": "end", "type": "END", "label": "Done" }
+  ],
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "parse" },
+    { "id": "e2", "source": "parse", "target": "review" },
+    { "id": "e3", "source": "review", "target": "route" },
+    { "id": "e4", "source": "route", "target": "end", "label": "rejected (default)" },
+    { "id": "e5", "source": "route", "target": "apply", "label": "approved" },
+    { "id": "e6", "source": "apply", "target": "end" }
+  ]
+}

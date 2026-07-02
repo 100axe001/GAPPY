@@ -1674,3 +1674,17 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
     grid-template-columns: 1fr;
   }
 }
+
+/* Integration / workflow category tag */
+.integration-cat-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-top: 4px;
+}

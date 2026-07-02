@@ -25,6 +25,8 @@ services:
     environment:
       - LIFEOS_DATABASE_URL=postgresql+asyncpg://postgres:postgres@lifeos-db:5432/lifeos
       - LEMMA_BASE_URL=http://lemma-local-backend:8000
+      - LEMMA_ORG_ID=${LEMMA_ORG_ID:-019f0d47-91d9-7314-9376-8a2a47900bea}
+      - LEMMA_POD_ID=${LEMMA_POD_ID:-019f2007-060b-7316-92ad-7dd7253147b8}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}

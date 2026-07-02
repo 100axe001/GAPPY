@@ -51,6 +51,9 @@
           <button class="nav-link" onclick="switchTab('life-ops')">
             <i data-lucide="check-square"></i> Life Ops
           </button>
+          <button class="nav-link" onclick="switchTab('workflows')">
+            <i data-lucide="git-branch"></i> Workflows
+          </button>
           <button class="nav-link" onclick="switchTab('second-brain')">
             <i data-lucide="brain"></i> Second Brain
           </button>
@@ -464,6 +467,34 @@
           
           <div id="integrations-list" class="dashboard-grid">
             <!-- Dynamic integration cards will be injected here -->
+          </div>
+        </section>
+
+        <!-- WORKFLOWS TAB -->
+        <section id="panel-workflows" class="panel">
+          <h1 class="page-title">Workflows</h1>
+          <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+            Pod workflows run an AI agent, then pause for your approval before acting — powered by Lemma.
+          </p>
+
+          <div class="paper-surface" style="margin-bottom: 1.5rem;">
+            <h3 class="section-heading">Draft &amp; send an email</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">The <code>email-drafter</code> agent writes it; you approve; the Gmail connector sends it.</p>
+            <input id="wf-email-to" type="text" class="text-input" placeholder="Recipient (e.g. alex@example.com)" style="margin-bottom:0.5rem;">
+            <textarea id="wf-email-brief" class="text-input" rows="2" placeholder="What should the email say?" style="margin-bottom:0.5rem;"></textarea>
+            <button class="btn btn-primary" onclick="startWorkflow('email-draft-send')">Draft email</button>
+          </div>
+
+          <div class="paper-surface" style="margin-bottom: 1.5rem;">
+            <h3 class="section-heading">Commitment intake</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">The <code>commitment-parser</code> agent structures it; you approve; it becomes a task.</p>
+            <input id="wf-commit-text" type="text" class="text-input" placeholder="e.g. submit the grant report by next Friday" style="margin-bottom:0.5rem;">
+            <button class="btn btn-primary" onclick="startWorkflow('commitment-intake')">Parse commitment</button>
+          </div>
+
+          <h3 class="section-heading" style="margin-top: 2rem;">Pending approvals</h3>
+          <div id="workflow-approvals" class="dashboard-grid">
+            <!-- Approval cards injected here -->
           </div>
         </section>
 

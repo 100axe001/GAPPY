@@ -1,0 +1,19 @@
+{
+  "name": "connections",
+  "primary_key_column": "id",
+  "enable_rls": false,
+  "description": "Directed links between items (Second Brain graph, suggested tasks, recurrences, study relations).",
+  "columns": [
+    { "name": "source_id", "type": "TEXT", "required": true, "description": "items.id of the source." },
+    { "name": "target_id", "type": "TEXT", "required": true, "description": "items.id of the target." },
+    {
+      "name": "connection_type",
+      "type": "TEXT",
+      "required": true,
+      "description": "relates_to | suggested_task | practice_of | weakness_of | recurrence_next."
+    },
+    { "name": "reason", "type": "TEXT", "description": "Why the AI created this link." },
+    { "name": "owner_id", "type": "TEXT", "required": true }
+  ],
+  "config": {}
+}

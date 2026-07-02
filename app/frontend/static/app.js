@@ -314,6 +314,8 @@ function renderDashboard() {
     handleGlobalSearch();
   } else if (currentTab === "integrations") {
     renderIntegrationsView();
+  } else if (currentTab === "workflows") {
+    renderWorkflowsView();
   } else if (currentTab === "chat") {
     renderChatView();
   } else if (currentTab === "agents") {
@@ -837,7 +839,7 @@ async function handleCreateNote(e) {
 
 async function handleGenerateDraft() {
   const checkboxes = document.querySelectorAll(".note-checkbox:checked");
-  const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.getAttribute("data-id")));
+  const selectedIds = Array.from(checkboxes).map(cb => cb.getAttribute("data-id"));
   
   if (selectedIds.length === 0) {
     alert("Please select at least one note to compile.");
@@ -1004,7 +1006,7 @@ async function handleStartStudySession(e) {
     currentPracticeQuestions = data.practice_questions || [];
     currentPracticeQuestionIdx = 0;
     practiceAnswers = [];
-    currentPracticeMaterialId = parseInt(materialId);
+    currentPracticeMaterialId = materialId;
     
     renderPracticeQuestion();
     fetchDashboardData();
@@ -1685,8 +1687,8 @@ async function clearWaitingStatus(itemId) {
 async function acceptConnection(sourceId, targetId, connType) {
   try {
     await apiFetch("/api/connections", "POST", {
-      source_id: parseInt(sourceId),
-      target_id: parseInt(targetId),
+      source_id: sourceId,
+      target_id: targetId,
       connection_type: connType
     });
     fetchDashboardData();
@@ -1758,6 +1760,84 @@ function getBrandLogo(name) {
   return `<i data-lucide="link-2"></i>`;
 }
 
+// ===== WORKFLOWS =====
+async function renderWorkflowsView() {
+  await renderApprovals();
+}
+
+async function startWorkflow(name) {
+  let inputs = {};
+  if (name === "email-draft-send") {
+    const to = document.getElementById("wf-email-to").value.trim();
+    const brief = document.getElementById("wf-email-brief").value.trim();
+    if (!to || !brief) { showToast("Enter a recipient and a brief.", "error"); return; }
+    inputs = { to, brief };
+  } else if (name === "commitment-intake") {
+    const raw_text = document.getElementById("wf-commit-text").value.trim();
+    if (!raw_text) { showToast("Enter a commitment.", "error"); return; }
+    inputs = { raw_text };
+  }
+  try {
+    showToast("Running agent…", "success");
+    await apiFetch(`/api/workflows/${name}/start`, "POST", { inputs });
+    // Give the agent a moment, then refresh approvals.
+    setTimeout(renderApprovals, 1500);
+    setTimeout(renderApprovals, 4000);
+  } catch (err) {
+    showToast("Workflow failed: " + err.message, "error");
+  }
+}
+
+async function renderApprovals() {
+  const container = document.getElementById("workflow-approvals");
+  if (!container) return;
+  container.innerHTML = `<p class="loading-indicator">Checking for approvals…</p>`;
+  try {
+    const approvals = await apiFetch("/api/workflows/approvals");
+    container.innerHTML = "";
+    if (!approvals.length) {
+      container.innerHTML = `<p class="empty-state-text">No pending approvals. Start a workflow above.</p>`;
+      return;
+    }
+    approvals.forEach(a => {
+      const p = a.preview || {};
+      let body = "";
+      if (p.kind === "email") {
+        body = `<div style="font-size:0.85rem;"><strong>Subject:</strong> ${escapeHtml(p.subject || "")}<br><br>${escapeHtml(p.body || "").replace(/\n/g,"<br>")}</div>`;
+      } else if (p.kind === "task") {
+        body = `<div style="font-size:0.9rem;"><strong>${escapeHtml(p.title || "New task")}</strong><br><span style="color:var(--text-secondary)">Due ${p.due_date || "—"} · ${p.priority || "medium"} · ${p.category || ""}</span></div>`;
+      } else {
+        body = `<div style="font-size:0.85rem; color:var(--text-secondary)">Awaiting your decision.</div>`;
+      }
+      const card = document.createElement("div");
+      card.className = "paper-surface";
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <span class="integration-cat-tag">${a.workflow || "workflow"}</span>
+        </div>
+        ${body}
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+          <button class="btn btn-primary" style="flex:1;" onclick="decideApproval('${a.run_id}','${a.node_id}',true)">Approve</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="decideApproval('${a.run_id}','${a.node_id}',false)">Reject</button>
+        </div>`;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--danger)">Failed to load approvals: ${err.message}</p>`;
+  }
+}
+
+async function decideApproval(runId, nodeId, approved) {
+  try {
+    await apiFetch("/api/workflows/decision", "POST", { run_id: runId, node_id: nodeId, approved });
+    showToast(approved ? "Approved — action running." : "Rejected.", "success");
+    setTimeout(renderApprovals, 1200);
+    setTimeout(fetchDashboardData, 2000);
+  } catch (err) {
+    showToast("Decision failed: " + err.message, "error");
+  }
+}
+
 async function renderIntegrationsView() {
   const container = document.getElementById("integrations-list");
   if (!container) return;
@@ -1777,7 +1857,7 @@ async function renderIntegrationsView() {
       const card = document.createElement("div");
       card.className = "integration-card";
       card.id = `card-${item.name}`;
-      
+
       const isConnected = item.is_connected;
       const health = item.health_status;
       const meta = item.metadata_json || {};
@@ -1789,15 +1869,10 @@ async function renderIntegrationsView() {
       let badgeClass = "integration-status-disconnected";
       let statusLabel = "Not Connected";
       if (isConnected) {
-        if (health === "broken") {
-          badgeClass = "integration-status-broken";
-          statusLabel = "Auth Expired";
-        } else {
-          badgeClass = "integration-status-connected";
-          statusLabel = "Connected";
-        }
+        badgeClass = "integration-status-connected";
+        statusLabel = "Connected";
       }
-      
+
       const iconLogo = getBrandLogo(item.name);
       
       const displayName = meta.display_name || item.name.split("_")
@@ -1807,26 +1882,16 @@ async function renderIntegrationsView() {
         
       let detailsHtml = "";
       if (isConnected) {
-        const lastSync = item.last_sync_at ? new Date(item.last_sync_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Just now";
         detailsHtml = `
           <ul class="integration-details-list">
-            <li><span>Connected Account</span> <span>${email}</span></li>
-            <li><span>Active Sync</span> <span>Enabled</span></li>
-            <li><span>Last Health Check</span> <span>${lastSync}</span></li>
-            <li><span>Permissions</span> <span>Read/Write</span></li>
+            <li><span>Connected Account</span> <span>${email || "Connected"}</span></li>
+            <li><span>Provider</span> <span>Lemma Connector</span></li>
           </ul>
         `;
       }
-      
+
       let errorHtml = "";
-      if (isConnected && health === "broken" && errorMsg) {
-        errorHtml = `
-          <div class="integration-error-box">
-            <strong>Error details:</strong> ${errorMsg}
-          </div>
-        `;
-      }
-      
+
       let actionsHtml = "";
       if (!isConnected) {
         actionsHtml = `
@@ -1844,11 +1909,6 @@ async function renderIntegrationsView() {
               <i data-lucide="trash-2" style="width:14px; height:14px;"></i> Disconnect
             </button>
           </div>
-          ${health === "broken" ? `
-            <button class="btn btn-primary" onclick="connectIntegration('${item.name}')" style="width: 100%; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-              <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i> Reconnect Account
-            </button>
-          ` : ""}
         `;
       }
       
@@ -1861,6 +1921,7 @@ async function renderIntegrationsView() {
             <div>
               <h3 class="integration-title">${displayName}</h3>
               <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; line-height: 1.3;">${desc}</p>
+              ${authTag}
             </div>
           </div>
           <span class="integration-status-badge ${badgeClass}">${statusLabel}</span>
@@ -1913,7 +1974,7 @@ async function connectIntegration(name) {
       const checkInterval = setInterval(async () => {
         const integrations = await apiFetch("/api/integrations");
         const match = integrations.find(i => i.name === name);
-        if (match && match.is_connected && match.health_status === "healthy") {
+        if (match && match.is_connected) {
           clearInterval(checkInterval);
           showToast(`${displayName} connected successfully!`, "success");
           fetchDashboardData();

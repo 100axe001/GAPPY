@@ -1,0 +1,12 @@
+{
+  "name": "send_gmail",
+  "description": "Sends an email through the connected Gmail account. Terminal step of the email-draft-send approval workflow.",
+  "type": "API",
+  "code": {"$file": "code.py"},
+  "permissions": {
+    "grants": [
+      { "resource_type": "connector", "resource_name": "gmail", "permission_ids": ["connector.use"] }
+    ]
+  },
+  "visibility": "POD"
+}
